@@ -26,7 +26,8 @@ class StepProgressBar extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(left: 16),
             child: LinearProgressIndicator(
-              value: currentStep / totalSteps,
+              // Guard against division by zero if totalSteps is 0
+              value: totalSteps > 0 ? (currentStep / totalSteps) : 0.0,
               backgroundColor: AppColors.border,
               color: AppColors.primary,
               minHeight: 6,

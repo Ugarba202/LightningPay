@@ -3,67 +3,91 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/themes/app_colors.dart';
 
-class EmailStep extends StatefulWidget {
-  final ValueChanged<String> onCompleted;
+class UsernameStep extends StatefulWidget {
+  final ValueChanged<String> onValidationChanged;
   final ValueListenable<bool> showValidationNotifier;
 
-  const EmailStep({
+  const UsernameStep({
     super.key,
-    required this.onCompleted,
+    required this.onValidationChanged,
     required this.showValidationNotifier,
   });
 
   @override
-  State<EmailStep> createState() => _EmailStepState();
+  State<UsernameStep> createState() => _UsernameStepState();
 }
 
-class _EmailStepState extends State<EmailStep> {
-  String _value = '';
+class _UsernameStepState extends State<UsernameStep> {
+  final _controller = TextEditingController();
   String? _error;
-
-  bool isValidEmail(String email) {
-    return RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
-  }
 
   @override
   void initState() {
     super.initState();
+    // Add a listener to the controller to validate on each change.
+    _controller.addListener(() => _validateUsername(_controller.text));
     widget.showValidationNotifier.addListener(_onShowValidationChanged);
   }
 
   @override
   void dispose() {
     widget.showValidationNotifier.removeListener(_onShowValidationChanged);
+    _controller.dispose();
     super.dispose();
   }
 
   void _onShowValidationChanged() {
+    // Re-run validation when parent requests showing errors
     if (widget.showValidationNotifier.value) {
-      final isValid = isValidEmail(_value.trim());
-      setState(() => _error = isValid ? null : 'Please enter a valid email');
+      _validateUsername(_controller.text);
     } else if (_error != null) {
       setState(() => _error = null);
     }
   }
 
+  void _validateUsername(String value) {
+    final trimmedValue = value.trim();
+    final hasSpace = RegExp(r'\s').hasMatch(trimmedValue);
+    final isValid = trimmedValue.length >= 3 && !hasSpace;
+
+    if (isValid) {
+      if (_error != null) setState(() => _error = null);
+      widget.onValidationChanged(trimmedValue);
+    } else {
+      widget.onValidationChanged('');
+      if (widget.showValidationNotifier.value) {
+        setState(() {
+          if (trimmedValue.length < 3) {
+            _error = 'Username must be at least 3 characters';
+          } else if (hasSpace) {
+            _error = 'Username cannot contain spaces';
+          } else {
+            _error = 'Invalid username';
+          }
+        });
+      } else if (_error != null) {
+        setState(() => _error = null);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Your email address', style: textTheme.headlineMedium),
-          const SizedBox(height: 12),
-          Text('Used for account recovery', style: textTheme.bodyMedium),
-          const SizedBox(height: 32),
+          Text(
+            'Create a username',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 24),
           TextField(
             autofocus: true,
-            keyboardType: TextInputType.emailAddress,
+            controller: _controller,
             decoration: InputDecoration(
-              hintText: 'Enter your email',
+              hintText: 'Username',
               errorText: _error,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
@@ -82,22 +106,6 @@ class _EmailStepState extends State<EmailStep> {
                 borderSide: BorderSide(color: AppColors.primary, width: 2),
               ),
             ),
-            onChanged: (value) {
-              _value = value;
-              final trimmedValue = _value.trim();
-              final valid = isValidEmail(trimmedValue);
-              if (valid) {
-                widget.onCompleted(trimmedValue);
-                if (_error != null) setState(() => _error = null);
-              } else {
-                widget.onCompleted(''); // Signal invalid state
-                if (widget.showValidationNotifier.value) {
-                  setState(() => _error = 'Please enter a valid email');
-                } else if (_error != null) {
-                  setState(() => _error = null);
-                }
-              }
-            },
           ),
         ],
       ),

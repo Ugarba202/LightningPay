@@ -6,6 +6,7 @@ class PinLayout extends StatelessWidget {
   final int pinLength;
   final Function(String) onKeyPressed;
   final VoidCallback onDelete;
+  final Color dotColor; // color for filled dot
 
   const PinLayout({
     super.key,
@@ -14,6 +15,7 @@ class PinLayout extends StatelessWidget {
     required this.pinLength,
     required this.onKeyPressed,
     required this.onDelete,
+    this.dotColor = Colors.black,
   });
 
   @override
@@ -31,7 +33,7 @@ class PinLayout extends StatelessWidget {
           // PIN DOTS
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(4, (index) {
+            children: List.generate(6, (index) {
               final filled = index < pinLength;
 
               return AnimatedScale(
@@ -47,7 +49,7 @@ class PinLayout extends StatelessWidget {
                     height: 16,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: filled ? Colors.black : Colors.grey.shade300,
+                      color: filled ? dotColor : Colors.grey.shade300,
                     ),
                   ),
                 ),

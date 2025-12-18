@@ -5,11 +5,13 @@ import '../widget/pin_layout.dart';
 class PinConfirmStep extends StatefulWidget {
   final String originalPin;
   final VoidCallback onCompleted;
+  final Color dotColor;
 
   const PinConfirmStep({
     super.key,
     required this.originalPin,
     required this.onCompleted,
+    this.dotColor = Colors.black,
   });
 
   @override
@@ -22,6 +24,7 @@ class _PinConfirmStepState extends State<PinConfirmStep> {
 
   void _onKeyPressed(String value) {
     if (_pin.length < 6) {
+      // Keep 6 for consistency, though it will trigger on length == 6
       setState(() {
         _pin += value;
         _error = null; // clear error on new input
@@ -61,6 +64,7 @@ class _PinConfirmStepState extends State<PinConfirmStep> {
             pinLength: _pin.length,
             onKeyPressed: _onKeyPressed,
             onDelete: _onDelete,
+            dotColor: widget.dotColor,
           ),
         ),
 
