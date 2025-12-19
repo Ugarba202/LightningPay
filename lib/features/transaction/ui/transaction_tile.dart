@@ -7,30 +7,34 @@ import '../model/transation_item.dart';
 class TransactionTile extends StatelessWidget {
   final TransactionItem transaction;
 
-  const TransactionTile({
-    super.key,
-    required this.transaction,
-  });
+  const TransactionTile({super.key, required this.transaction});
 
   @override
   Widget build(BuildContext context) {
     final isReceived = transaction.type == TransactionType.received;
 
+    final dateText = () {
+      final now = DateTime.now();
+      final dt = transaction.date.toLocal();
+      final diff = now.difference(dt).inDays;
+      if (diff == 0) return 'Today';
+      if (diff == 1) return 'Yesterday';
+      return dt.toLocal().toString().split(' ').first;
+    }();
+
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: _Icon(type: transaction.type),
       title: Text(transaction.title),
-      subtitle: Text(transaction.date),
+      subtitle: Text(dateText),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            '${isReceived ? '+' : '-'}${transaction.amount} BTC',
+            '${isReceived ? '+' : '-'}${transaction.amount.toStringAsFixed(6)} BTC',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isReceived
-                  ? AppColors.success
-                  : AppColors.error,
+              color: isReceived ? AppColors.success : AppColors.error,
             ),
           ),
           const SizedBox(height: 4),
@@ -40,7 +44,6 @@ class TransactionTile extends StatelessWidget {
     );
   }
 }
-
 
 class _Icon extends StatelessWidget {
   final TransactionType type;
@@ -74,7 +77,6 @@ class _Icon extends StatelessWidget {
   }
 }
 
-
 class _Status extends StatelessWidget {
   final TransactionStatus status;
 
@@ -88,9 +90,7 @@ class _Status extends StatelessWidget {
       isCompleted ? 'Completed' : 'Pending',
       style: TextStyle(
         fontSize: 12,
-        color: isCompleted
-            ? AppColors.success
-            : AppColors.textSecondary,
+        color: isCompleted ? AppColors.success : AppColors.textSecondary,
       ),
     );
   }

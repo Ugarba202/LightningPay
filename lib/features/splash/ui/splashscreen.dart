@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/themes/app_colors.dart';
 import '../../onboarding/ui/onboarding_screen.dart';
+import '../../auth/ui/login_screen.dart';
+import '../../../core/storage/auth_storage.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,11 +24,19 @@ class _SplashScreenState extends State<SplashScreen> {
       setState(() => _visible = true);
     });
 
-    Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
+    Timer(const Duration(seconds: 3), () async {
+      final registered = await AuthStorage.isRegistered();
+      if (registered) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      }
     });
   }
 

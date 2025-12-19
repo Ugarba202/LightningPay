@@ -4,6 +4,7 @@ import 'package:lighting_pay/features/splash/ui/splashscreen.dart';
 import 'core/themes/app_themes.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const LightningPayApp());
 }
 

@@ -4,11 +4,15 @@ import '../../../core/constant/contry_code.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../core/themes/navigation/main_navigation_screen.dart';
 import 'widget/step_progress_bar.dart';
+
+import '../../../core/storage/auth_storage.dart';
 // Steps
 import 'steps/name_step.dart';
 import 'steps/username_step.dart';
 import 'steps/country_step.dart';
 import 'steps/email_step.dart';
+import 'steps/otp_step.dart';
+import 'steps/phone_step.dart';
 import 'steps/pin_create_step.dart';
 import 'steps/pin_comfirm_step.dart';
 
@@ -32,6 +36,7 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
   String? username;
   String? email;
   Country? country;
+  String? phone;
   String? loginPin;
 
   // State for UI
@@ -66,15 +71,24 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
       showValidationNotifier: _showValidationNotifier,
       onCompleted: (value) => _updateValidation(value, (val) => name = val),
     ),
-    UsernameStep(
-      showValidationNotifier: _showValidationNotifier,
-      onValidationChanged: (value) =>
-          _updateValidation(value, (val) => username = val),
-    ),
+
+    // Email -> OTP flow (OTP accepts any 6-digit code in dev mode)
     EmailStep(
       showValidationNotifier: _showValidationNotifier,
       onCompleted: (value) => _updateValidation(value, (val) => email = val),
     ),
+
+    OtpStep(
+      onCompleted: (value) {
+        // mark the step as valid (no persistent value needed)
+        _updateValidation(value, (val) {});
+        // clear any validation UI and advance to the next step
+        _showValidationNotifier.value = false;
+        _nextStep();
+      },
+    ),
+
+    // Select country next
     CountryStep(
       showValidationNotifier: _showValidationNotifier,
       onCompleted: (value) {
@@ -85,6 +99,21 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
         });
       },
     ),
+
+    // Phone number step (shows country dial code when available)
+    PhoneStep(
+      country: country ?? supportedCountries.first,
+      onCompleted: (value) => _updateValidation(value, (val) => phone = val),
+    ),
+
+    // Username after country & phone
+    UsernameStep(
+      showValidationNotifier: _showValidationNotifier,
+      onValidationChanged: (value) =>
+          _updateValidation(value, (val) => username = val),
+    ),
+
+    // PIN create & confirm
     PinCreateStep(onCompleted: _onPinCreated),
     PinConfirmStep(
       originalPin: loginPin ?? '',
@@ -112,6 +141,37 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
     if (_currentStep >= _totalSteps - 1) return;
 
     if (_currentStep < _totalSteps && _isStepValid) {
+      // If we're moving *from* the Email step (index 1) to OTP (index 2),
+      // refresh the OTP step instance so it can show the most recent email.
+      if (_currentStep == 1) {
+        final otpIndex = 2;
+        if (otpIndex >= 0 && otpIndex < _wizardSteps.length) {
+          _wizardSteps[otpIndex] = OtpStep(
+            email: email,
+            onCompleted: (value) {
+              // mark the step as valid (no persistent value needed)
+              _updateValidation(value, (val) {});
+              // clear any validation UI and advance to the next step
+              _showValidationNotifier.value = false;
+              _nextStep();
+            },
+          );
+        }
+      }
+
+      // If we're moving from Country -> Phone, refresh the PhoneStep so it
+      // shows the newly selected country dial code.
+      if (_currentStep == 3) {
+        final phoneIndex = 4;
+        if (phoneIndex >= 0 && phoneIndex < _wizardSteps.length) {
+          _wizardSteps[phoneIndex] = PhoneStep(
+            country: country ?? supportedCountries.first,
+            onCompleted: (value) =>
+                _updateValidation(value, (val) => phone = val),
+          );
+        }
+      }
+
       setState(() {
         _isStepValid = false; // Reset for the next step
         _currentStep++;
@@ -178,12 +238,50 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
     }
   }
 
-  void _onPinConfirmed() {
-    // Show confirmation progress for a short time, then navigate
+  Future<void> _onPinConfirmed() async {
+    // Show confirmation progress for a short time, save credentials, then navigate
     setState(() => _isConfirming = true);
 
-    Future.delayed(const Duration(seconds: 5), () {
+    // Save the newly created credentials locally so returning users can log in
+    if (email != null && loginPin != null) {
+      await AuthStorage.saveCredentials(email!, loginPin!);
+    }
+
+    // Also save profile fields collected during the wizard
+    if (name != null && name!.isNotEmpty) {
+      await AuthStorage.saveFullName(name!);
+    }
+    if (username != null && username!.isNotEmpty) {
+      await AuthStorage.saveUsername(username!);
+    }
+    if (country != null) {
+      await AuthStorage.saveCountry('${country!.flag} ${country!.name}');
+    }
+    if (phone != null && phone!.isNotEmpty) {
+      await AuthStorage.savePhoneNumber(phone!);
+    }
+
+    // Generate and store a recovery phrase for now (dev/mock)
+    final phraseWords = [
+      'light',
+      'river',
+      'coffee',
+      'tree',
+      'wallet',
+      'secure',
+      'orange',
+      'planet',
+      'trust',
+      'future',
+      'energy',
+      'freedom',
+    ];
+    await AuthStorage.saveRecoveryPhrase(phraseWords.join(' '));
+
+    Future.delayed(const Duration(seconds: 5), () async {
       if (!mounted) return;
+      // Mark that we should prompt the user to set up a transaction PIN on first run
+      await AuthStorage.markNeedTransactionSetup(true);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
