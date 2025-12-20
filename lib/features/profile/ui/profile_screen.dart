@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:lighting_pay/features/auth/ui/login_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/themes/app_colors.dart';
 import '../../../core/storage/auth_storage.dart';
+
 import '../../auth/ui/transaction_pin_flow.dart';
 import 'edit_profile_screen.dart';
 
@@ -66,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
-                    _removeProfileImage();
+                    _confirmRemoveProfileImage();
                   },
                 ),
             ],
@@ -99,6 +101,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _confirmRemoveProfileImage() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Photo'),
+        content: const Text(
+          'Are you sure you want to remove your profile photo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _removeProfileImage();
+    }
+  }
+
   Future<void> _removeProfileImage() async {
     try {
       if (_profileImagePath != null) {
@@ -128,6 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadSecurityState() async {
     final bio = await AuthStorage.isBiometricsEnabled();
     final tx = await AuthStorage.getSavedTransactionPin();
+    final imagePath = await AuthStorage.getProfileImagePath();
 
     // profile fields
     final name = await AuthStorage.getFullName();
@@ -146,6 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _phone = phone;
       _username = username;
       _recoveryPhrase = recovery;
+      _profileImagePath = imagePath;
     });
   }
 
@@ -168,6 +199,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     await _loadSecurityState();
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Log Out'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // For now, just navigate to login. In a real app you'd clear tokens.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (r) => false,
+      );
+    }
   }
 
   @override
@@ -319,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.logout,
               label: 'Log Out',
               color: Colors.red,
-              onTap: () {},
+              onTap: _confirmLogout,
             ),
 
             const SizedBox(height: 12),

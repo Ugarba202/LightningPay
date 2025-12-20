@@ -1,47 +1,43 @@
 import 'package:flutter/material.dart';
-import '../../../core/themes/app_colors.dart';
 import 'package:flutter/services.dart';
-import 'dart:typed_data';
+import 'package:lighting_pay/core/themes/app_colors.dart' show AppColors;
+import 'package:lighting_pay/features/transaction/model/transation_item.dart' show TransactionItem, TransactionStatus;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-import '../model/transation_item.dart';
+
+// import '../../../core/themes/app_colors.dart';
+// import '../model/transation_item.dart';
 
 class TransactionReceiptScreen extends StatelessWidget {
   final TransactionItem transaction;
 
   const TransactionReceiptScreen({super.key, required this.transaction});
 
-  Future<Uint8List> _generatePdf(PdfPageFormat format) async {
+  Future<void> _printReceipt(BuildContext context) async {
     final doc = pw.Document();
     doc.addPage(
       pw.Page(
-        pageFormat: format,
         build: (pw.Context context) {
           return pw.Padding(
             padding: const pw.EdgeInsets.all(20),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(
-                  'Transaction Receipt',
-                  style: pw.TextStyle(
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
+                pw.Text('Transaction Receipt',
+                    style: pw.TextStyle(
+                        fontSize: 24, fontWeight: pw.FontWeight.bold)),
                 pw.Divider(height: 20),
                 pw.SizedBox(height: 20),
                 _buildPdfRow('Transaction ID:', transaction.txId),
                 _buildPdfRow('To:', transaction.address),
                 _buildPdfRow('Amount:', '${transaction.amount} BTC'),
                 _buildPdfRow('Network Fee:', transaction.fee),
+                _buildPdfRow('Status:',
+                    transaction.status.toString().split('.').last),
                 _buildPdfRow(
-                  'Status:',
-                  transaction.status.toString().split('.').last,
-                ),
-                _buildPdfRow('Date:', transaction.date.toLocal().toString()),
+                    'Date:', transaction.date.toLocal().toString()),
               ],
             ),
           );
@@ -49,28 +45,9 @@ class TransactionReceiptScreen extends StatelessWidget {
       ),
     );
 
-    return doc.save();
-  }
-
-  Future<void> _printReceipt(BuildContext context) async {
     await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => _generatePdf(format),
+      onLayout: (PdfPageFormat format) async => doc.save(),
     );
-  }
-
-  Future<void> _downloadReceipt(BuildContext context) async {
-    try {
-      final bytes = await _generatePdf(PdfPageFormat.a4);
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: 'receipt_${transaction.txId.substring(0, 8)}.pdf',
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Download not supported on this device')),
-      );
-    }
   }
 
   pw.Widget _buildPdfRow(String label, String value) {
@@ -80,10 +57,9 @@ class TransactionReceiptScreen extends StatelessWidget {
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
           pw.Text(label, style: const pw.TextStyle(fontSize: 16)),
-          pw.Text(
-            value,
-            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
-          ),
+          pw.Text(value,
+              style:
+                  pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
         ],
       ),
     );
@@ -96,8 +72,7 @@ class TransactionReceiptScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Receipt'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
+          IconButton(icon: const Icon(Icons.share),
             onPressed: () async {
               final receiptText =
                   '''
@@ -112,7 +87,7 @@ Date: ${transaction.date.toLocal().toString()}''';
               // ignore: deprecated_member_use
               try {
                 await Share.share(receiptText, subject: 'Transaction Receipt');
-              } catch (e) {
+              } on PlatformException {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -124,11 +99,9 @@ Date: ${transaction.date.toLocal().toString()}''';
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: Padding(padding: const EdgeInsets.all(24),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -139,7 +112,7 @@ Date: ${transaction.date.toLocal().toString()}''';
                     color: Colors.black.withOpacity(0.03),
                     blurRadius: 6,
                   ),
-                ], 
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,35 +161,47 @@ Date: ${transaction.date.toLocal().toString()}''';
 
             const Spacer(),
 
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.print_outlined),
-                    label: const Text('Print'),
-                    onPressed: () => _printReceipt(context),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.download),
-                    label: const Text('Download Receipt'),
-                    onPressed: () => _downloadReceipt(context),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.print_outlined),
+                label: const Text('Print'),
+                onPressed: () => _printReceipt(context),
               ),
             ),
-          ],
-        ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.copy),
+                label: const Text('Copy TX ID'),
+                onPressed: () async {
+                  try {
+                    await Clipboard.setData(
+                      ClipboardData(text: transaction.txId),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Transaction ID copied to clipboard'),
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to copy')),
+                    );
+                  }
+                },
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ),
+        ]),
       ),
     );
   }

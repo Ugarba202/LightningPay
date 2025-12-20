@@ -21,6 +21,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   Future<void> _load() async {
     final items = await TransactionStorage.getTransactions();
+    if (!mounted) return;
     setState(() {
       _transactions = items;
       _loading = false;
@@ -115,22 +116,25 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     )
-                  : ListView.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(),
-                      itemBuilder: (context, index) {
-                        final tx = filtered[index];
-                        return InkWell(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  TransactionReceiptScreen(transaction: tx),
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.separated(
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const Divider(),
+                        itemBuilder: (context, index) {
+                          final tx = filtered[index];
+                          return InkWell(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    TransactionReceiptScreen(transaction: tx),
+                              ),
                             ),
-                          ),
-                          child: TransactionTile(transaction: tx),
-                        );
-                      },
+                            child: TransactionTile(transaction: tx),
+                          );
+                        },
+                      ),
                     ),
             ),
           ],

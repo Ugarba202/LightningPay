@@ -29,6 +29,7 @@ class TransactionTile extends StatelessWidget {
       subtitle: Text(dateText),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             '${isReceived ? '+' : '-'}${transaction.amount.toStringAsFixed(6)} BTC',
@@ -38,7 +39,7 @@ class TransactionTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          _Status(status: transaction.status),
+          _StatusBadge(status: transaction.status),
         ],
       ),
     );
@@ -77,21 +78,36 @@ class _Icon extends StatelessWidget {
   }
 }
 
-class _Status extends StatelessWidget {
+class _StatusBadge extends StatelessWidget {
   final TransactionStatus status;
 
-  const _Status({required this.status});
+  const _StatusBadge({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final isCompleted = status == TransactionStatus.completed;
-
-    return Text(
-      isCompleted ? 'Completed' : 'Pending',
-      style: TextStyle(
-        fontSize: 12,
-        color: isCompleted ? AppColors.success : AppColors.textSecondary,
+    String text;
+    Color color;
+    switch (status) {
+      case TransactionStatus.completed:
+        text = 'Completed';
+        color = AppColors.success;
+        break;
+      case TransactionStatus.pending:
+        text = 'Pending';
+        color = Colors.orange;
+        break;
+      case TransactionStatus.failed:
+        text = 'Failed';
+        color = AppColors.error;
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
+      child: Text(text, style: TextStyle(fontSize: 12, color: color)),
     );
   }
 }
