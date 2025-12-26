@@ -160,13 +160,14 @@ Date: ${transaction.date.toLocal().toString()}''';
                     onTap: () async {
                       await Clipboard.setData(
                         ClipboardData(text: transaction.address),
-                      );
+                      ); 
+                      // ignore: use_build_context_synchronously
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Address copied to clipboard'),
+                          content: Text('Address copied to clipboard'),//meet.google.com/bwk-hnak-pzb
                         ),
                       );
-                    },
+                    },    
                   ),
                   const SizedBox(height: 8),
                   _Row(label: 'Amount', value: '${transaction.amount} BTC'),
