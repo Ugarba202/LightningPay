@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../core/themes/widgets/glass_card.dart';
 import '../logic/deposit_logic.dart';
+import '../../../../core/storage/auth_storage.dart';
 
 class DepositScreen extends StatefulWidget {
   const DepositScreen({super.key});
@@ -15,12 +16,25 @@ class _DepositScreenState extends State<DepositScreen> {
   final _amountController = TextEditingController();
   
   String _selectedPurpose = 'Savings';
-  final List<String> _purposes = ['Send to friend', 'Savings', 'Household', 'School fees'];
+  final List<String> _purposes = ['Household', 'Savings', 'School fees', 'Business'];
 
   String _selectedCurrency = 'USD';
-  final List<String> _currencies = ['BTC', 'USD', 'NGN', 'EUR'];
+  final List<String> _currencies = ['USD', 'NGN', 'EUR']; // Removed BTC
 
+  String _username = 'User';
+  final String _accountNumber = 'LP-8822-1100-3344';
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  void _loadUser() async {
+    final name = await AuthStorage.getUsername();
+    if (name != null) setState(() => _username = name);
+  }
 
   @override
   void dispose() {
@@ -61,8 +75,59 @@ class _DepositScreenState extends State<DepositScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Account Identity Card
+            GlassCard(
+              padding: const EdgeInsets.all(24),
+              color: AppColors.primary.withOpacity(0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'FUNDING ACCOUNT',
+                        style: TextStyle(
+                          color: AppColors.textLow,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      Icon(Icons.account_balance_rounded, color: AppColors.primary.withOpacity(0.5), size: 18),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'LP / @$_username',
+                    style: const TextStyle(
+                      color: AppColors.textHigh,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        _accountNumber,
+                        style: TextStyle(
+                          color: AppColors.textMed,
+                          fontSize: 15,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.copy_rounded, color: AppColors.primary.withOpacity(0.7), size: 14),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+
             _InputSection(
-              label: 'Purpose of Deposit',
+              label: 'Deposit Purpose',
               child: _SelectionContainer(
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -80,38 +145,45 @@ class _DepositScreenState extends State<DepositScreen> {
             ),
             const SizedBox(height: 24),
 
-            _InputSection(
-              label: 'Source Currency',
-              child: _SelectionContainer(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCurrency,
-                    dropdownColor: AppColors.surfaceDark,
-                    isExpanded: true,
-                    items: _currencies.map((c) => DropdownMenuItem(
-                      value: c,
-                      child: Text(c, style: const TextStyle(color: AppColors.textHigh, fontWeight: FontWeight.bold)),
-                    )).toList(),
-                    onChanged: (val) => setState(() => _selectedCurrency = val!),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _InputSection(
+                    label: 'Currency',
+                    child: _SelectionContainer(
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedCurrency,
+                          dropdownColor: AppColors.surfaceDark,
+                          isExpanded: true,
+                          items: _currencies.map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(c, style: const TextStyle(color: AppColors.textHigh, fontWeight: FontWeight.bold)),
+                          )).toList(),
+                          onChanged: (val) => setState(() => _selectedCurrency = val!),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            _InputSection(
-              label: 'Amount to Deposit',
-              child: TextField(
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textHigh),
-                decoration: InputDecoration(
-                  hintText: '0.00',
-                  suffixText: _selectedCurrency,
-                  suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 3,
+                  child: _InputSection(
+                    label: 'Amount',
+                    child: TextField(
+                      controller: _amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textHigh),
+                      decoration: const InputDecoration(
+                        hintText: '0.00',
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
+              ],
             ),
 
             const SizedBox(height: 32),
@@ -119,7 +191,7 @@ class _DepositScreenState extends State<DepositScreen> {
             if (_amountController.text.isNotEmpty)
               GlassCard(
                 padding: const EdgeInsets.all(20),
-                color: AppColors.primary.withOpacity(0.05),
+                color: Colors.white.withOpacity(0.03),
                 child: Column(
                   children: [
                     _SummaryRow(label: 'Deposit Method', value: 'Bank Transfer'),
@@ -130,7 +202,12 @@ class _DepositScreenState extends State<DepositScreen> {
                       child: Divider(color: AppColors.border, thickness: 0.5),
                     ),
                     _SummaryRow(
-                      label: "You'll Receive",
+                      label: "Account to Credit",
+                      value: 'Local Balance ($_selectedCurrency)',
+                    ),
+                    const SizedBox(height: 12),
+                    _SummaryRow(
+                      label: "Total Funding",
                       value: '${_amountController.text} $_selectedCurrency',
                       isBold: true,
                     ),

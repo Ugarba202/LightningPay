@@ -19,7 +19,7 @@ class BalanceCard extends StatelessWidget {
         );
       },
       child: Container(
-        height: 200,
+        height: 240, // Increased height for dual balance
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
           gradient: const LinearGradient(
@@ -73,59 +73,109 @@ class BalanceCard extends StatelessWidget {
                 color: Colors.white.withOpacity(0.1),
                 border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
                 padding: const EdgeInsets.all(28),
-                child: ValueListenableBuilder<double>(
-                  valueListenable: WalletStore().balanceBTC,
-                  builder: (context, balance, _) {
-                    final balanceUSD = balance * 65000.0;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total Balance',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            Icon(
-                              Icons.data_exploration_rounded,
-                              color: Colors.white.withOpacity(0.6),
-                              size: 20,
-                            ),
-                          ],
+                        Text(
+                          'TOTAL ASSETS',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
                         ),
-                        Column(
+                        Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: Colors.white.withOpacity(0.4),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Local Balance Section
+                    ValueListenableBuilder<double>(
+                      valueListenable: WalletStore().balanceLocal,
+                      builder: (context, localBalance, _) {
+                        return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${balance.toStringAsFixed(8).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} BTC',
+                              '\$${localBalance.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
                               style: const TextStyle(
-                                fontSize: 34,
+                                fontSize: 32,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
-                                letterSpacing: -1,
+                                letterSpacing: -0.5,
                               ),
                             ),
-                            const SizedBox(height: 6),
                             Text(
-                              '≈ \$${balanceUSD.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
+                              'Local Funding Balance',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
-                        ),
-                      ],
-                    );
-                  },
+                        );
+                      },
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Divider(color: Colors.white12, height: 1),
+                    ),
+                    // BTC Balance Section
+                    ValueListenableBuilder<double>(
+                      valueListenable: WalletStore().balanceBTC,
+                      builder: (context, btcBalance, _) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${btcBalance.toStringAsFixed(8).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} BTC',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Bitcoin Savings',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.5),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '≈ \$${(btcBalance * 65000.0).toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
