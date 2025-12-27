@@ -5,6 +5,7 @@ import '../../../core/themes/widgets/glass_card.dart';
 import 'transaction_result_screen.dart';
 import '../../transaction/data/transaction_storage.dart';
 import '../../transaction/model/transation_item.dart';
+import '../../../core/themes/widgets/transaction_pin_sheet.dart';
 
 class SendConfirmSheet extends StatefulWidget {
   final String? address;
@@ -34,7 +35,14 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
     return {'success': success, 'txId': txId};
   }
 
-  void _onSendNow() async {
+  void _onSendNow() {
+    TransactionPinSheet.show(
+      context,
+      onVerified: _executeSend,
+    );
+  }
+
+  void _executeSend() async {
     final result = await _simulateSend();
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -52,6 +60,7 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
             : 'Failed send',
         date: DateTime.now(),
         amount: amountVal,
+        currency: 'BTC',
         type: TransactionType.sent,
         status: success ? TransactionStatus.completed : TransactionStatus.failed,
         txId: txId,

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../core/themes/widgets/glass_card.dart';
 import '../logic/deposit_logic.dart';
+import '../../transaction/data/transaction_storage.dart';
+import '../../transaction/model/transation_item.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/storage/auth_storage.dart';
 
 class DepositScreen extends StatefulWidget {
@@ -52,6 +55,20 @@ class _DepositScreenState extends State<DepositScreen> {
       currency: _selectedCurrency,
       purpose: _selectedPurpose,
     );
+
+    // Record Transaction
+    await TransactionStorage.addTransaction(TransactionItem(
+      title: 'Local Deposit',
+      date: DateTime.now(),
+      amount: double.tryParse(_amountController.text) ?? 0,
+      currency: _selectedCurrency,
+      type: TransactionType.deposit,
+      status: TransactionStatus.completed,
+      txId: const Uuid().v4(),
+      address: 'Bank Transfer',
+      fee: '0.00 $_selectedCurrency',
+      reason: _selectedPurpose,
+    ));
 
     if (!mounted) return;
     setState(() => _isLoading = false);

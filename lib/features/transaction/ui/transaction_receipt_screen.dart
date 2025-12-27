@@ -129,7 +129,7 @@ class TransactionReceiptScreen extends StatelessWidget {
 Transaction Receipt
 ID: ${transaction.txId}
 To: ${transaction.address}
-${transaction.username != null ? 'Recipient: ${transaction.username}\n' : ''}Amount: ${transaction.amount} BTC
+${transaction.username != null ? 'Recipient: ${transaction.username}\n' : ''}Amount: ${transaction.amount} ${transaction.currency}
 Status: ${transaction.status.name.toUpperCase()}
 Date: ${transaction.date.toLocal()}''';
               try {
@@ -165,17 +165,35 @@ Date: ${transaction.date.toLocal()}''';
                     color: AppColors.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.receipt_long_rounded,
+                  child: Icon(
+                    () {
+                      switch (transaction.type) {
+                        case TransactionType.sent: return Icons.north_east_rounded;
+                        case TransactionType.received: return Icons.south_west_rounded;
+                        case TransactionType.lightning: return Icons.bolt_rounded;
+                        case TransactionType.deposit: return Icons.add_circle_outline_rounded;
+                        case TransactionType.withdrawal: return Icons.remove_circle_outline_rounded;
+                        case TransactionType.conversion: return Icons.swap_horiz_rounded;
+                      }
+                    }(),
                     color: AppColors.primary,
                     size: 40,
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Proof of Payment',
-                style: TextStyle(
+              Text(
+                () {
+                  switch (transaction.type) {
+                    case TransactionType.sent: return 'Proof of Payment';
+                    case TransactionType.received: return 'Payment Received';
+                    case TransactionType.lightning: return 'Lightning Receipt';
+                    case TransactionType.deposit: return 'Deposit Receipt';
+                    case TransactionType.withdrawal: return 'Withdrawal Receipt';
+                    case TransactionType.conversion: return 'Conversion Receipt';
+                  }
+                }(),
+                style: const TextStyle(
                   color: AppColors.textHigh,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -191,9 +209,21 @@ Date: ${transaction.date.toLocal()}''';
                   color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'Verified on Bitcoin Blockchain',
-                  style: TextStyle(color: AppColors.textMed, fontSize: 12),
+                child: Text(
+                  () {
+                    switch (transaction.type) {
+                      case TransactionType.sent:
+                      case TransactionType.received:
+                      case TransactionType.lightning:
+                        return 'Verified on Bitcoin Blockchain';
+                      case TransactionType.deposit:
+                      case TransactionType.withdrawal:
+                        return 'Verified via Bank Network';
+                      case TransactionType.conversion:
+                        return 'Internal Ledger Verified';
+                    }
+                  }(),
+                  style: const TextStyle(color: AppColors.textMed, fontSize: 12),
                 ),
               ),
 
@@ -269,7 +299,7 @@ Date: ${transaction.date.toLocal()}''';
                           ),
                         ),
                         Text(
-                          '${transaction.amount} BTC',
+                          '${transaction.amount} ${transaction.currency}',
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 22,

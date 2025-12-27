@@ -1,4 +1,4 @@
-enum TransactionType { sent, received, lightning }
+enum TransactionType { sent, received, lightning, deposit, withdrawal, conversion }
 
 enum TransactionStatus { completed, pending, failed }
 
@@ -6,6 +6,7 @@ class TransactionItem {
   final String title;
   final DateTime date;
   final double amount;
+  final String currency;
   final TransactionType type;
   final TransactionStatus status;
   final String txId;
@@ -19,6 +20,7 @@ class TransactionItem {
     required this.title,
     required this.date,
     required this.amount,
+    required this.currency,
     required this.type,
     required this.status,
     required this.txId,
@@ -34,11 +36,14 @@ class TransactionItem {
       title: json['title'] as String,
       date: DateTime.parse(json['date'] as String),
       amount: (json['amount'] as num).toDouble(),
+      currency: json['currency'] as String? ?? 'BTC',
       type: TransactionType.values.firstWhere(
         (e) => e.toString() == json['type'],
+        orElse: () => TransactionType.sent,
       ),
       status: TransactionStatus.values.firstWhere(
         (e) => e.toString() == json['status'],
+        orElse: () => TransactionStatus.completed,
       ),
       txId: json['txId'] as String? ?? '',
       address: json['address'] as String? ?? '',
@@ -53,6 +58,7 @@ class TransactionItem {
     'title': title,
     'date': date.toIso8601String(),
     'amount': amount,
+    'currency': currency,
     'type': type.toString(),
     'status': status.toString(),
     'txId': txId,

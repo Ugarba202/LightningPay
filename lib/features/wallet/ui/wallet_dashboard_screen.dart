@@ -5,6 +5,7 @@ import '../../../core/themes/app_colors.dart';
 import '../../receive/ui/receive_screen.dart';
 import '../../deposit/ui/deposit_screen.dart';
 import '../../withdraw/ui/withdraw_screen.dart';
+import '../../convert/ui/convert_screen.dart';
 import '../../transaction/ui/transaction_history_screen.dart';
 import 'balance_card.dart';
 
@@ -70,8 +71,10 @@ class WalletDashboardScreen extends StatelessWidget {
                       const SizedBox(height: 40),
                       
                       // Action Buttons Grid
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        spacing: 8,
+                        runSpacing: 24,
                         children: [
                           _ActionButton(
                             icon: Icons.send_rounded,
@@ -103,6 +106,14 @@ class WalletDashboardScreen extends StatelessWidget {
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const WithdrawScreen()),
+                            ),
+                          ),
+                          _ActionButton(
+                            icon: Icons.swap_horizontal_circle_rounded,
+                            label: 'Convert',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ConvertScreen()),
                             ),
                           ),
                         ],

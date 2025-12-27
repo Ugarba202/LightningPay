@@ -1,80 +1,244 @@
-# ⚡ LightningPay
+⚡ LightningPay
 
-LightningPay is a **production-structured mobile application** built with **Flutter**, **Python (FastAPI)**, and **Bitcoin Lightning Network** technologies.
+LightningPay is a learning-focused Bitcoin & Lightning payment app built with Flutter.
+The goal of this project is to understand how real-world fintech and Bitcoin systems are designed internally, not to process real money.
 
+⚠️ IMPORTANT DISCLAIMER
+All balances, transactions, deposits, withdrawals, and conversions in this app are 100% simulated (FAKE).
+There is NO real Bitcoin, NO real bank integration, and NO real financial transactions involved.
+This project is strictly for learning, experimentation, and portfolio demonstration.
 
----
+🚀 Project Motivation
 
-## 🚀 Vision
+Cross-border payments are still difficult, especially when:
 
-The goal of LightningPay is to demonstrate how a modern mobile application is built **end-to-end**, using clean code, scalable architecture, and industry best practices.
+Users only have local bank money
 
-Rather than jumping straight into complex Bitcoin logic, the app evolves gradually:
+Crypto wallets are complex and error-prone
 
-1. Beautiful, professional Flutter UI
-2. Clean app logic and state management
-3. Python backend with real APIs
-4. Bitcoin & Lightning Network integration
+Wallet addresses are hard to manage
 
-This approach mirrors how real production applications are developed.
+Exchanges require prior crypto ownership
 
----
+LightningPay was built to explore:
 
-## 🧩 Problem
+How local currency enters a system (on-ramp)
 
-* Many developers learn Flutter UI but struggle to connect it to real backends.
-* Bitcoin and Lightning concepts are often taught theoretically, without real applications.
-* There is a lack of **clean, review-ready sample projects** that combine mobile, backend, and Bitcoin technologies.
+How Bitcoin can act as a settlement layer
 
----
+How peer-to-peer payments can be simplified using usernames & QR codes
 
-## 💡 Solution
+How funds exit back to local currency (off-ramp)
 
-LightningPay solves this by providing:
+All of this is implemented using mock logic, mirroring real systems without financial risk.
 
-* A **feature-based Flutter architecture**
-* A real **Python (FastAPI) backend**
-* Practical **Bitcoin & Lightning payment flows**
-* Clean, readable, and review-friendly code
-* A transparent build-in-public learning process
+🧠 Core Design Principles
 
----
+BTC is the only transferable asset between users
 
+Local currency is used only for Deposit and Withdraw
 
+Deposit ≠ Convert ≠ Send ≠ Withdraw (clear separation of concerns)
 
----
+Ledger-based system (balances update from transactions)
 
-## 📂 Project Structure (Flutter)
+Human-friendly UX (no forced wallet addresses)
 
-```text
-lib/
-├── core/
-│   ├── theme/
-│   ├── constants/
-│   └── utils/
-├── features/
-│   ├── splash/
-│   ├── onboarding/
-│   ├── auth/
-│   ├── wallet/
-│   ├── transaction/
-│   └── settings/
-├── shared/
-│   ├── widgets/
-│   └── services/
-└── main.dart
-```
+Built for learning by building
 
+🧩 Features
+🔐 Onboarding & Authentication
 
----
+Splash screen & onboarding flow
 
+Step-by-step authentication wizard
 
----
+Profile creation (name, username, email, country, phone)
 
+Login PIN setup
 
+Editable user profile
 
-## 👤 Author
+🏠 Wallet Dashboard
 
-Built by a developer learning and building in public.
+BTC balance (primary)
 
-If you find this project useful, feel free to ⭐ the repository and follow the journey.
+Local currency equivalents (secondary)
+
+Quick actions:
+
+Send
+
+Receive
+
+Deposit
+
+Withdraw
+
+Convert
+
+Recent transactions preview
+
+📥 Receive (BTC Only)
+
+Display username (@username)
+
+BTC QR code
+
+Copy & share options
+
+No fiat, no conversion, no balance mutation
+
+📤 Send (BTC Only)
+
+Send BTC via:
+
+Username
+
+QR code
+
+BTC amount input
+
+Optional reason & note
+
+Safe-send confirmation
+
+Internal BTC ledger transfer
+
+💰 Deposit (Local Currency → LightningPay)
+
+Simulated local bank funding
+
+Each user gets a LightningPay virtual account number
+
+Format: LP-<COUNTRY>-<RANDOM>
+
+Deposit purpose tagging
+
+Local currency balance credited
+
+No automatic conversion
+
+🔁 Convert (Currency Bridge)
+
+Dedicated conversion screen
+
+Convert:
+
+Local currency ↔ BTC
+
+Mock exchange rates
+
+“You will receive” preview
+
+Ledger-based balance updates
+
+🏧 Withdraw (LightningPay → Local Bank)
+
+Users must withdraw in local currency
+
+BTC must be converted before withdrawal
+
+Mock bank account details
+
+Balance validation & confirmation
+
+🧾 Transactions & Receipts
+
+Full transaction history
+
+Supports:
+
+Deposits
+
+Conversions
+
+Sends
+
+Receives
+
+Withdrawals
+
+Detailed transaction receipts
+
+PDF export
+
+Shareable transaction summaries
+
+🔁 Example Flow (Simulated)
+
+Ali (Pakistan) → Usman (Nigeria)
+
+Ali deposits PKR via LightningPay account number
+
+Ali converts PKR → BTC
+
+Ali sends BTC to @usman
+
+Usman receives BTC
+
+Usman converts BTC → NGN
+
+Usman withdraws NGN to local bank
+
+Bitcoin acts as the internal settlement layer, while users interact with familiar concepts.
+
+🛠️ Tech Stack
+
+Flutter
+
+Firebase (Authentication & Firestore)
+
+Ledger-based state management
+
+Modular, clean architecture
+
+🧪 Demo & Source Code
+
+▶️ Live Demo: https://your-test-link-here
+
+💻 Source Code: https://github.com/your-username/lightningpay
+
+⚠️ Reminder:
+This app uses mock data only.
+No real money, no real Bitcoin, no real banking APIs.
+
+📚 Learning Outcomes
+
+This project helped me understand:
+
+Ledger-based financial systems
+
+Fiat on-ramp & off-ramp modeling
+
+Currency conversion logic
+
+P2P payment flows
+
+Clean Flutter architecture
+
+How Bitcoin & Lightning fit into real payment systems
+
+🚧 Future Improvements (Learning-Only)
+
+Replace mock services with testnet logic
+
+Persist ledger data fully in Firestore
+
+Add advanced security flows
+
+Improve analytics & reporting
+
+📄 License
+
+This project is open-source and intended for educational purposes only.
+
+If you want, next I can:
+
+Shorten this README for recruiters
+
+Create architecture diagrams
+
+Write a case study version for your portfolio
+
+Prepare interview talking points based on this project

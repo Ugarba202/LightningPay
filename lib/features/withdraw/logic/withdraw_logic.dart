@@ -11,24 +11,28 @@ class WithdrawLogic {
   String? checkBalance(String amount) {
     final value = double.tryParse(amount);
     if (value == null) return "Invalid amount";
-    if (!_walletStore.hasSufficientFunds(value)) {
-      return "Insufficient balance";
+    if (_walletStore.balanceLocal.value < value) {
+      return "Insufficient local balance";
     }
     return null;
   }
 
+  bool needsConversion() {
+    // If local balance is 0 but BTC is not, suggest conversion
+    return _walletStore.balanceLocal.value <= 0 && _walletStore.balanceBTC.value > 0;
+  }
+
   Future<void> processWithdraw({
     required String amount,
-    required String type, // 'Bank' or 'P2P'
-    required String destination, // Account Number or Username
+    required String type,
+    required String destination,
   }) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
     final value = double.tryParse(amount);
-    if (value != null) {
-      // Mock deduction
-      _walletStore.withdraw(value);
+    if (value != null && _walletStore.balanceLocal.value >= value) {
+      _walletStore.balanceLocal.value -= value;
     }
   }
 }

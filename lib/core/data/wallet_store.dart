@@ -24,12 +24,33 @@ class WalletStore {
     }
   }
 
+  void convert({
+    required double amount,
+    required bool fromBTC,
+    required double rate, // 1 BTC = rate Local
+  }) {
+    if (amount <= 0) return;
+
+    if (fromBTC) {
+      if (balanceBTC.value >= amount) {
+        balanceBTC.value -= amount;
+        balanceLocal.value += amount * rate;
+      }
+    } else {
+      if (balanceLocal.value >= amount) {
+        balanceLocal.value -= amount;
+        balanceBTC.value += amount / rate;
+      }
+    }
+  }
+
   void withdraw(double amount) {
     if (amount > 0 && balanceBTC.value >= amount) {
       balanceBTC.value -= amount;
     }
   }
   
+  // Only checks Bitcoin balance. For local balance, check balanceLocal.value directly.
   bool hasSufficientFunds(double amount) {
     return balanceBTC.value >= amount;
   }

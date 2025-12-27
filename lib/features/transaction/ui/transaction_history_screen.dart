@@ -37,39 +37,63 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _transactions.where((t) => _filter == TransactionType.lightning || t.type == _filter).toList();
+    final filtered = _transactions.where((t) {
+      if (_filter == TransactionType.lightning) return true; // Treat 'lightning' as 'All' for simplicity or add an explicit 'All'
+      return t.type == _filter;
+    }).toList();
 
     return Scaffold(
+      backgroundColor: AppColors.bgDark,
       appBar: AppBar(
         title: const Text('Transaction History'),
         elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: Column(
         children: [
           // Filter Selector
-          Padding(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  _FilterTab(
-                    label: 'Sent',
-                    isSelected: _filter == TransactionType.sent,
-                    onTap: () => setState(() => _filter = TransactionType.sent),
-                  ),
-                  _FilterTab(
-                    label: 'Received',
-                    isSelected: _filter == TransactionType.received,
-                    onTap: () => setState(() => _filter = TransactionType.received),
-                  ),
-                ],
-              ),
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                _FilterTab(
+                  label: 'All',
+                  isSelected: _filter == TransactionType.lightning,
+                  onTap: () => setState(() => _filter = TransactionType.lightning),
+                ),
+                const SizedBox(width: 8),
+                _FilterTab(
+                  label: 'Sent',
+                  isSelected: _filter == TransactionType.sent,
+                  onTap: () => setState(() => _filter = TransactionType.sent),
+                ),
+                const SizedBox(width: 8),
+                _FilterTab(
+                  label: 'Received',
+                  isSelected: _filter == TransactionType.received,
+                  onTap: () => setState(() => _filter = TransactionType.received),
+                ),
+                const SizedBox(width: 8),
+                _FilterTab(
+                  label: 'Deposits',
+                  isSelected: _filter == TransactionType.deposit,
+                  onTap: () => setState(() => _filter = TransactionType.deposit),
+                ),
+                const SizedBox(width: 8),
+                _FilterTab(
+                  label: 'Withdrawals',
+                  isSelected: _filter == TransactionType.withdrawal,
+                  onTap: () => setState(() => _filter = TransactionType.withdrawal),
+                ),
+                const SizedBox(width: 8),
+                _FilterTab(
+                  label: 'Conversions',
+                  isSelected: _filter == TransactionType.conversion,
+                  onTap: () => setState(() => _filter = TransactionType.conversion),
+                ),
+              ],
             ),
           ),
 
@@ -133,12 +157,11 @@ class _FilterTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 20),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
@@ -162,7 +185,6 @@ class _FilterTab extends StatelessWidget {
               ),
             ),
           ),
-        ),
       ),
     );
   }

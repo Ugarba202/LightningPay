@@ -96,15 +96,15 @@ class BalanceCard extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    // Local Balance Section
+                    // BTC Balance Section (Primary)
                     ValueListenableBuilder<double>(
-                      valueListenable: WalletStore().balanceLocal,
-                      builder: (context, localBalance, _) {
+                      valueListenable: WalletStore().balanceBTC,
+                      builder: (context, btcBalance, _) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '\$${localBalance.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
+                              '${btcBalance.toStringAsFixed(8).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} BTC',
                               style: const TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
@@ -113,7 +113,7 @@ class BalanceCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'Local Funding Balance',
+                              'Bitcoin Savings',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.7),
                                 fontSize: 13,
@@ -128,10 +128,10 @@ class BalanceCard extends StatelessWidget {
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Divider(color: Colors.white12, height: 1),
                     ),
-                    // BTC Balance Section
+                    // Local Balance Section (Secondary)
                     ValueListenableBuilder<double>(
-                      valueListenable: WalletStore().balanceBTC,
-                      builder: (context, btcBalance, _) {
+                      valueListenable: WalletStore().balanceLocal,
+                      builder: (context, localBalance, _) {
                         return Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.end,
@@ -140,7 +140,7 @@ class BalanceCard extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${btcBalance.toStringAsFixed(8).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} BTC',
+                                  '\$${localBalance.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -148,7 +148,7 @@ class BalanceCard extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'Bitcoin Savings',
+                                  'Local Funding Balance',
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.5),
                                     fontSize: 12,
@@ -163,7 +163,7 @@ class BalanceCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                '≈ \$${(btcBalance * 65000.0).toStringAsFixed(0)}',
+                                '≈ ${(localBalance / 65000).toStringAsFixed(8).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} BTC',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,

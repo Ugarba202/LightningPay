@@ -9,7 +9,6 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isReceived = transaction.type == TransactionType.received;
 
     final dateText = () {
       final now = DateTime.now();
@@ -76,11 +75,11 @@ class TransactionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${isReceived ? '+' : '-'}${transaction.amount.toStringAsFixed(6)} BTC',
+                '${(transaction.type == TransactionType.received || transaction.type == TransactionType.deposit) ? '+' : '-'}${transaction.amount % 1 == 0 ? transaction.amount.toStringAsFixed(0) : transaction.amount.toStringAsFixed(transaction.currency == 'BTC' ? 8 : 2).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} ${transaction.currency}',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: isReceived ? AppColors.success : AppColors.textHigh,
+                  color: (transaction.type == TransactionType.received || transaction.type == TransactionType.deposit) ? AppColors.success : AppColors.textHigh,
                 ),
               ),
               const SizedBox(height: 6),
@@ -115,6 +114,18 @@ class _Icon extends StatelessWidget {
       case TransactionType.lightning:
         icon = Icons.bolt_rounded;
         color = Colors.amber;
+        break;
+      case TransactionType.deposit:
+        icon = Icons.add_circle_outline_rounded;
+        color = AppColors.success;
+        break;
+      case TransactionType.withdrawal:
+        icon = Icons.remove_circle_outline_rounded;
+        color = AppColors.error;
+        break;
+      case TransactionType.conversion:
+        icon = Icons.swap_horiz_rounded;
+        color = AppColors.warning;
         break;
     }
 

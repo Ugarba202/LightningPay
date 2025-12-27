@@ -104,9 +104,10 @@ class TransactionResultScreen extends StatelessWidget {
                 OutlinedButton(
                   onPressed: () {
                     final tx = TransactionItem(
-                      title: 'Sent',
+                      title: (username != null && username!.isNotEmpty) ? 'Sent to $username' : 'Sent',
                       date: DateTime.now(),
                       amount: double.tryParse(amount) ?? 0.0,
+                      currency: 'BTC',
                       type: TransactionType.sent,
                       status: TransactionStatus.completed,
                       txId: txId,

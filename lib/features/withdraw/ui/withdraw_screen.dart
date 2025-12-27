@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../core/themes/widgets/glass_card.dart';
 import '../logic/withdraw_logic.dart';
+import '../../convert/ui/convert_screen.dart';
+import '../../../../core/data/wallet_store.dart';
+import '../../transaction/data/transaction_storage.dart';
+import '../../transaction/model/transation_item.dart';
+import 'package:uuid/uuid.dart';
+import '../../../core/themes/widgets/transaction_pin_sheet.dart';
+// Optional if using WalletStore directly
 
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
@@ -28,7 +35,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     super.dispose();
   }
 
-  void _onWithdraw() async {
+  void _onWithdraw() {
     setState(() => _error = null);
 
     if (!_logic.validateAmount(_amountController.text)) {
@@ -38,8 +45,8 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
     final balanceError = _logic.checkBalance(_amountController.text);
     if (balanceError != null) {
-       setState(() => _error = balanceError);
-       return;
+      setState(() => _error = balanceError);
+      return;
     }
 
     if (_destinationController.text.isEmpty) {
@@ -47,6 +54,13 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       return;
     }
 
+    TransactionPinSheet.show(
+      context,
+      onVerified: _executeWithdraw,
+    );
+  }
+
+  void _executeWithdraw() async {
     setState(() => _isLoading = true);
 
     await _logic.processWithdraw(
@@ -54,6 +68,20 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       type: _selectedType,
       destination: _destinationController.text,
     );
+
+    // Record Transaction
+    await TransactionStorage.addTransaction(TransactionItem(
+      title: 'Withdrawal',
+      date: DateTime.now(),
+      amount: double.tryParse(_amountController.text) ?? 0,
+      currency: 'USD',
+      type: TransactionType.withdrawal,
+      status: TransactionStatus.completed,
+      txId: const Uuid().v4(),
+      address: _destinationController.text,
+      fee: '1.50 USD',
+      reason: _selectedType,
+    ));
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -77,6 +105,50 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Balance Info & Redirect
+            ValueListenableBuilder<double>(
+              valueListenable: WalletStore().balanceLocal,
+              builder: (context, localBalance, _) {
+                final hasBTC = WalletStore().balanceBTC.value > 0;
+                
+                if (localBalance <= 0 && hasBTC) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(16),
+                      color: AppColors.primary.withOpacity(0.1),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline_rounded, color: AppColors.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Only local currency can be withdrawn.',
+                                  style: TextStyle(color: AppColors.textHigh, fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const ConvertScreen()),
+                                  ),
+                                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
+                                  child: const Text('Convert BTC to USD first', style: TextStyle(color: AppColors.primary)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+
             _InputSection(
               label: 'Withdrawal Method',
               child: _SelectionContainer(
@@ -97,7 +169,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             const SizedBox(height: 24),
 
             _InputSection(
-              label: _selectedType == 'To Bank Account' ? 'Account Number' : 'Recipient Username',
+              label: _selectedType == 'To Bank Account' ? 'Bank Account Number' : 'Recipient Username',
               child: TextField(
                 controller: _destinationController,
                 style: const TextStyle(color: AppColors.textHigh),
@@ -109,14 +181,14 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             const SizedBox(height: 24),
 
             _InputSection(
-              label: 'Amount to Withdraw (BTC)',
+              label: 'Amount to Withdraw',
               child: TextField(
                 controller: _amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textHigh),
                 decoration: InputDecoration(
                   hintText: '0.00',
-                  suffixText: 'BTC',
+                  suffixText: 'USD',
                   suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                   errorText: _error,
                 ),
@@ -136,14 +208,14 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     value: _selectedType == 'To Bank Account' ? '1-2 Business Days' : 'Instant',
                   ),
                   const SizedBox(height: 12),
-                  _SummaryRow(label: 'Network Fee', value: '0.00005 BTC'),
+                  _SummaryRow(label: 'Network Fee', value: '1.50 USD'),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(color: AppColors.border, thickness: 0.5),
                   ),
                   _SummaryRow(
-                    label: 'Total Deduction',
-                    value: '${(double.tryParse(_amountController.text) ?? 0 + 0.00005).toStringAsFixed(6)} BTC',
+                    label: 'Amount to Receive',
+                    value: '\$${(double.tryParse(_amountController.text) ?? 0).toStringAsFixed(2)}',
                     isBold: true,
                   ),
                 ],
