@@ -3,6 +3,8 @@ import 'package:lighting_pay/features/send/ui/send_amount_screen.dart';
 
 import '../../../core/themes/app_colors.dart';
 import '../../receive/ui/receive_screen.dart';
+import '../../deposit/ui/deposit_screen.dart';
+import '../../withdraw/ui/withdraw_screen.dart';
 import '../../transaction/ui/transaction_history_screen.dart';
 import 'balance_card.dart';
 
@@ -42,12 +44,26 @@ class WalletDashboardScreen extends StatelessWidget {
                 _ActionButton(
                   icon: Icons.arrow_downward,
                   label: 'Receive',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ReceiveScreen()),
-                    );
-                  },
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ReceiveScreen()),
+                  ),
+                ),
+                _ActionButton(
+                  icon: Icons.add_circle_outline,
+                  label: 'Deposit',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DepositScreen()),
+                  ),
+                ),
+                _ActionButton(
+                  icon: Icons.remove_circle_outline,
+                  label: 'Withdraw',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const WithdrawScreen()),
+                  ),
                 ),
               ],
             ),

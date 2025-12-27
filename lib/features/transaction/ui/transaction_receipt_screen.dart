@@ -34,9 +34,17 @@ class TransactionReceiptScreen extends StatelessWidget {
                 pw.Divider(height: 20),
                 pw.SizedBox(height: 20),
                 _buildPdfRow('Transaction ID:', transaction.txId),
+                if (transaction.username != null &&
+                    transaction.username!.isNotEmpty)
+                  _buildPdfRow('Username:', transaction.username!),
                 _buildPdfRow('To:', transaction.address),
                 _buildPdfRow('Amount:', '${transaction.amount} BTC'),
                 _buildPdfRow('Network Fee:', transaction.fee),
+                if (transaction.reason != null &&
+                    transaction.reason!.isNotEmpty)
+                  _buildPdfRow('Reason:', transaction.reason!),
+                if (transaction.note != null && transaction.note!.isNotEmpty)
+                  _buildPdfRow('Note:', transaction.note!),
                 _buildPdfRow(
                   'Status:',
                   transaction.status.toString().split('.').last,
@@ -63,7 +71,8 @@ class TransactionReceiptScreen extends StatelessWidget {
       final bytes = await _generatePdf(PdfPageFormat.a4);
       await Printing.sharePdf(
         bytes: bytes,
-        filename: 'receipt_${transaction.txId.substring(0, 8)}.pdf',
+        filename:
+            'receipt_${transaction.txId.length >= 8 ? transaction.txId.substring(0, 8) : transaction.txId}.pdf',
       );
     } catch (e) {
       if (!context.mounted) return;
@@ -105,9 +114,9 @@ Transaction Receipt
 -------------------
 ID: ${transaction.txId}
 To: ${transaction.address}
-Amount: ${transaction.amount} BTC
+${transaction.username != null ? 'Username: ${transaction.username}\n' : ''}Amount: ${transaction.amount} BTC
 Fee: ${transaction.fee}
-Status: ${transaction.status.toString().split('.').last}
+${transaction.reason != null ? 'Reason: ${transaction.reason}\n' : ''}${transaction.note != null ? 'Note: ${transaction.note}\n' : ''}Status: ${transaction.status.toString().split('.').last}
 Date: ${transaction.date.toLocal().toString()}''';
               // ignore: deprecated_member_use
               try {
@@ -139,7 +148,7 @@ Date: ${transaction.date.toLocal().toString()}''';
                     color: Colors.black.withOpacity(0.03),
                     blurRadius: 6,
                   ),
-                ], 
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,20 +169,38 @@ Date: ${transaction.date.toLocal().toString()}''';
                     onTap: () async {
                       await Clipboard.setData(
                         ClipboardData(text: transaction.address),
-                      ); 
+                      );
                       // ignore: use_build_context_synchronously
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Address copied to clipboard'),//meet.google.com/bwk-hnak-pzb
+                          content: Text('Address copied to clipboard'),
                         ),
                       );
-                    },    
+                    },
                   ),
+                  if (transaction.username != null &&
+                      transaction.username!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _Row(label: 'Username', value: transaction.username!),
+                  ],
                   const SizedBox(height: 8),
                   _Row(label: 'Amount', value: '${transaction.amount} BTC'),
                   const SizedBox(height: 8),
                   _Row(label: 'Network Fee', value: transaction.fee),
+
+                  if (transaction.reason != null &&
+                      transaction.reason!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _Row(label: 'Reason', value: transaction.reason!),
+                  ],
+                  if (transaction.note != null &&
+                      transaction.note!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _Row(label: 'Note', value: transaction.note!),
+                  ],
+
                   const SizedBox(height: 8),
+
                   _Row(
                     label: 'Status',
                     valueWidget: _StatusBadge(status: transaction.status),

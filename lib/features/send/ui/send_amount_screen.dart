@@ -13,24 +13,42 @@ class SendAmountScreen extends StatefulWidget {
 class _SendAmountScreenState extends State<SendAmountScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _reasonController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
 
-  bool get _isAmountEnabled => _addressController.text.trim().isNotEmpty;
-  bool get _canContinue {
+  // Mock Currency Data
+  final List<Map<String, dynamic>> _currencies = [
+    {'code': 'BTC', 'name': 'Bitcoin', 'rate': 1.0, 'flag': '₿'},
+    {'code': 'USD', 'name': 'US Dollar', 'rate': 65000.0, 'flag': '🇺🇸'},
+    {'code': 'NGN', 'name': 'Nigerian Naira', 'rate': 100000000.0, 'flag': '🇳🇬'}, // Mock rate
+    {'code': 'EUR', 'name': 'Euro', 'rate': 60000.0, 'flag': '🇪🇺'},
+    {'code': 'GBP', 'name': 'British Pound', 'rate': 52000.0, 'flag': '🇬🇧'},
+  ];
+
+  late Map<String, dynamic> _selectedCurrency;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCurrency = _currencies[1]; // Default to USD for "cross-border" feel
+    _addressController.addListener(() => setState(() {}));
+    _amountController.addListener(() => setState(() {})); // Listen to amount changes
+  }
+
+  bool get canContinue {
     final amount = double.tryParse(_amountController.text.trim());
     return _addressController.text.trim().isNotEmpty &&
         (amount != null && amount > 0);
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _addressController.addListener(() => setState(() {}));
-  }
+  bool get isAmountEnabled => _addressController.text.trim().isNotEmpty;
 
   @override
   void dispose() {
     _addressController.dispose();
     _amountController.dispose();
+    _reasonController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -46,16 +64,33 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
 
       if (!mounted) return;
       // Immediately show confirm sheet (user requested Send to push to confirm)
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => SendConfirmSheet(
-          address: _addressController.text.trim(),
-          amount: _amountController.text.trim(),
-        ),
-      );
+      _showConfirmSheet();
     }
+  }
+
+  void _showConfirmSheet() {
+    final addressText = _addressController.text.trim();
+    // Simple heuristic: if it contains spaces or is short, treat as username? 
+    // Or just treat everything as address unless it looks like a username?
+    // Requirement says: "Any input that is not a standard wallet address format ... will be treated as a Username"
+    // Let's check length for now. Bitcoin addresses are usually 26-35 characters.
+    // Be generous and say if length < 25, it's a username. Or if it doesn't start with 1, 3, or bc1?
+    
+    // For this mock:
+    final isUsername = addressText.length < 25; 
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SendConfirmSheet(
+        address: isUsername ? null : addressText,
+        username: isUsername ? addressText : null,
+        amount: _amountController.text.trim(),
+        reason: _reasonController.text.trim(),
+        note: _noteController.text.trim(),
+      ),
+    );
   }
 
   @override
@@ -71,12 +106,15 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
             const SizedBox(height: 16),
 
             // Wallet Address input
-            Text('Recipient', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Recipient (Address or Username)',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _addressController,
               decoration: InputDecoration(
-                hintText: 'Enter wallet address',
+                hintText: 'Enter address or username',
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 14,
@@ -95,6 +133,75 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 24),
+
+            // Country / Currency Selector
+            Text(
+              'Recipient Currency',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<Map<String, dynamic>>(
+                  value: _selectedCurrency,
+                  isExpanded: true,
+                  items: _currencies.map((currency) {
+                    return DropdownMenuItem<Map<String, dynamic>>(
+                      value: currency,
+                      child: Row(
+                        children: [
+                          Text(
+                            currency['flag'],
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                currency['code'],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                currency['name'],
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedCurrency = value;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ),
+            
+            if (_selectedCurrency['code'] != 'BTC') ...[
+               const SizedBox(height: 8),
+               Text(
+                 'Exchange Rate: 1 BTC ≈ ${_selectedCurrency['rate']} ${_selectedCurrency['code']}',
+                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                   color: AppColors.textSecondary,
+                 ),
+               ),
+            ],
 
             const SizedBox(height: 12),
 
@@ -138,12 +245,12 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
             // Amount input (disabled until address provided)
             TextField(
               controller: _amountController,
-              enabled: _isAmountEnabled,
+              enabled: isAmountEnabled,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               decoration: InputDecoration(
-                hintText: _isAmountEnabled
+                hintText: isAmountEnabled
                     ? 'Enter amount (BTC)'
                     : 'Enter address first',
                 contentPadding: const EdgeInsets.symmetric(
@@ -165,6 +272,76 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
               ),
               onChanged: (_) => setState(() {}),
             ),
+            
+            // Estimated Receive Amount
+            if (_amountController.text.isNotEmpty && _selectedCurrency['code'] != 'BTC') ...[
+               const SizedBox(height: 8),
+               Container(
+                 padding: const EdgeInsets.all(12),
+                 decoration: BoxDecoration(
+                   color: AppColors.primary.withOpacity(0.05),
+                   borderRadius: BorderRadius.circular(8),
+                   border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                 ),
+                 child: Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                   children: [
+                     const Text('Recipient Receives:'),
+                     Text(
+                       '${(double.tryParse(_amountController.text) ?? 0 * (_selectedCurrency['rate'] as double)).toStringAsFixed(2)} ${_selectedCurrency['code']}',
+                       style: const TextStyle(
+                         fontWeight: FontWeight.bold,
+                         fontSize: 16,
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
+            ],
+            
+            // Estimated Receive Amount
+
+
+            const SizedBox(height: 24),
+
+            Text(
+              'Transaction Details (Optional)',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            
+            // Reason
+            TextField(
+              controller: _reasonController,
+              decoration: InputDecoration(
+                hintText: 'Reason (e.g. Dinner, Rent)',
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            // Note
+            TextField(
+              controller: _noteController,
+              decoration: InputDecoration(
+                hintText: 'Add a note',
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+              ),
+            ),
 
             const SizedBox(height: 24),
 
@@ -185,17 +362,9 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
 
             // Continue button
             ElevatedButton(
-              onPressed: _canContinue
+              onPressed: canContinue
                   ? () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => SendConfirmSheet(
-                          address: _addressController.text.trim(),
-                          amount: _amountController.text.trim(),
-                        ),
-                      );
+                      _showConfirmSheet();
                     }
                   : null,
               child: const Text('Continue'),
@@ -205,7 +374,9 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
       ),
     );
   }
-}
+    
+  }
+
 
 // -------------------------------------------------------------
 // Simple QR scanner screen using mobile_scanner package

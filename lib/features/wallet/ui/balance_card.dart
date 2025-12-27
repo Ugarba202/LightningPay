@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../../../core/data/wallet_store.dart';
 import '../../../core/themes/app_colors.dart';
 
 class BalanceCard extends StatelessWidget {
@@ -24,25 +24,34 @@ class BalanceCard extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Total Balance',
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '0.025 BTC',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text('≈ \$1,200.00', style: TextStyle(color: Colors.white70)),
-          ],
+        child: ValueListenableBuilder<double>(
+          valueListenable: WalletStore().balanceBTC,
+          builder: (context, balance, _) {
+            final balanceUSD = balance * 65000.0; // Mock rate
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Total Balance',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${balance.toStringAsFixed(8).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} BTC',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '≈ \$${balanceUSD.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

@@ -10,6 +10,9 @@ class TransactionResultScreen extends StatelessWidget {
   final String amount;
   final String fee;
   final String txId;
+  final String? username;
+  final String? reason;
+  final String? note;
   final String? message;
 
   const TransactionResultScreen({
@@ -19,6 +22,9 @@ class TransactionResultScreen extends StatelessWidget {
     required this.amount,
     required this.fee,
     required this.txId,
+    this.username,
+    this.reason,
+    this.note,
     this.message,
   });
 
@@ -88,11 +94,29 @@ class TransactionResultScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Row(label: 'To', value: address),
+                   if (username != null && username!.isNotEmpty) ...[
+                    _Row(label: 'Username', value: username!),
+                    const SizedBox(height: 8),
+                  ],
+                  _Row(
+                    label: 'To',
+                    value:
+                        address.length > 20
+                            ? '${address.substring(0, 8)}...${address.substring(address.length - 8)}'
+                            : address,
+                  ),
                   const SizedBox(height: 8),
                   _Row(label: 'Amount', value: amount),
                   const SizedBox(height: 8),
                   _Row(label: 'Network Fee', value: fee),
+                  if (reason != null && reason!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _Row(label: 'Reason', value: reason!),
+                  ],
+                  if (note != null && note!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _Row(label: 'Note', value: note!),
+                  ],
                   const SizedBox(height: 8),
                   _Row(label: 'Transaction ID', value: _shortTxId),
                 ],
@@ -127,6 +151,9 @@ class TransactionResultScreen extends StatelessWidget {
                     txId: txId,
                     address: address,
                     fee: fee,
+                    username: username,
+                    reason: reason,
+                    note: note,
                   );
                   Navigator.of(context).push(
                     MaterialPageRoute(

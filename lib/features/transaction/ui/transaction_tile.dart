@@ -26,7 +26,22 @@ class TransactionTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: _Icon(type: transaction.type),
       title: Text(transaction.title),
-      subtitle: Text(dateText),
+      subtitle: Row(
+        children: [
+          Text(dateText),
+          if (transaction.reason != null && transaction.reason!.isNotEmpty) ...[
+            const SizedBox(width: 4),
+            const Text('•'),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                transaction.reason!,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ],
+      ),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,

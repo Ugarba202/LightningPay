@@ -7,9 +7,19 @@ import '../../transaction/model/transation_item.dart';
 
 class SendConfirmSheet extends StatefulWidget {
   final String? address;
+  final String? username;
   final String? amount;
+  final String? reason;
+  final String? note;
 
-  const SendConfirmSheet({super.key, this.address, this.amount});
+  const SendConfirmSheet({
+    super.key,
+    this.address,
+    this.username,
+    this.amount,
+    this.reason,
+    this.note,
+  });
 
   @override
   State<SendConfirmSheet> createState() => _SendConfirmSheetState();
@@ -47,7 +57,11 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
 
     await TransactionStorage.addTransaction(
       TransactionItem(
-        title: success ? 'Sent' : 'Failed send',
+        title: success
+            ? (widget.username != null && widget.username!.isNotEmpty
+                ? 'Sent to ${widget.username}'
+                : 'Sent')
+            : 'Failed send',
         date: DateTime.now(),
         amount: amountVal,
         type: success ? TransactionType.sent : TransactionType.sent,
@@ -56,7 +70,10 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
             : TransactionStatus.failed,
         txId: txId,
         address: widget.address ?? 'Unknown',
+        username: widget.username,
         fee: '0.0001 BTC',
+        reason: widget.reason,
+        note: widget.note,
       ),
     );
 
@@ -67,9 +84,12 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
           builder: (_) => TransactionResultScreen(
             success: success,
             address: widget.address ?? 'Unknown',
+            username: widget.username,
             amount: widget.amount ?? '—',
             fee: '0.0001 BTC',
             txId: txId,
+            reason: widget.reason,
+            note: widget.note,
             message: success ? null : 'Network error',
           ),
         ),
@@ -117,13 +137,39 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                 ),
                 const SizedBox(height: 16),
 
+                if (widget.username != null &&
+                    widget.username!.isNotEmpty) ...[
+                  _Row(label: 'Username', value: widget.username!),
+                  const SizedBox(height: 8),
+                ],
+
                 if (widget.address != null) ...[
-                  _Row(label: 'To', value: widget.address!),
+                  _Row(
+                    label: 'Address',
+                    value:
+                        widget.address!.length > 20
+                            ? '${widget.address!.substring(0, 8)}...${widget.address!.substring(widget.address!.length - 8)}'
+                            : widget.address!,
+                  ),
                   const SizedBox(height: 8),
                 ],
 
                 _Row(label: 'Amount', value: widget.amount ?? '—'),
                 _Row(label: 'Fee', value: '0.0001 BTC'),
+
+                if (widget.reason != null && widget.reason!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _Row(label: 'Reason', value: widget.reason!),
+                ],
+                if (widget.note != null && widget.note!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _Row(label: 'Note', value: widget.note!),
+                ],
+
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+
                 // If amount is numeric show total, else show placeholder
                 _Row(
                   label: 'Total',
