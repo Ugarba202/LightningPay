@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
 import '../../../core/themes/app_colors.dart';
-
 import '../model/transation_item.dart';
 
 class TransactionTile extends StatelessWidget {
@@ -22,39 +20,73 @@ class TransactionTile extends StatelessWidget {
       return dt.toLocal().toString().split(' ').first;
     }();
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: _Icon(type: transaction.type),
-      title: Text(transaction.title),
-      subtitle: Row(
-        children: [
-          Text(dateText),
-          if (transaction.reason != null && transaction.reason!.isNotEmpty) ...[
-            const SizedBox(width: 4),
-            const Text('•'),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                transaction.reason!,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withOpacity(0.3)),
       ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
-          Text(
-            '${isReceived ? '+' : '-'}${transaction.amount.toStringAsFixed(6)} BTC',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isReceived ? AppColors.success : AppColors.error,
+          _Icon(type: transaction.type),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textHigh,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      dateText,
+                      style: const TextStyle(fontSize: 13, color: AppColors.textMed),
+                    ),
+                    if (transaction.reason != null && transaction.reason!.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text('•', style: TextStyle(color: AppColors.textLow)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          transaction.reason!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13, color: AppColors.textMed),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          _StatusBadge(status: transaction.status),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${isReceived ? '+' : '-'}${transaction.amount.toStringAsFixed(6)} BTC',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: isReceived ? AppColors.success : AppColors.textHigh,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _StatusBadge(status: transaction.status),
+            ],
+          ),
         ],
       ),
     );
@@ -69,26 +101,30 @@ class _Icon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     IconData icon;
+    Color color;
 
     switch (type) {
       case TransactionType.received:
-        icon = Icons.arrow_downward;
+        icon = Icons.south_west_rounded;
+        color = AppColors.success;
         break;
       case TransactionType.sent:
-        icon = Icons.arrow_upward;
+        icon = Icons.north_east_rounded;
+        color = AppColors.primary;
         break;
       case TransactionType.lightning:
-        icon = Icons.flash_on;
+        icon = Icons.bolt_rounded;
+        color = Colors.amber;
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        shape: BoxShape.circle,
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Icon(icon, color: AppColors.primary),
+      child: Icon(icon, color: color, size: 22),
     );
   }
 }
@@ -109,7 +145,7 @@ class _StatusBadge extends StatelessWidget {
         break;
       case TransactionStatus.pending:
         text = 'Pending';
-        color = Colors.orange;
+        color = AppColors.warning;
         break;
       case TransactionStatus.failed:
         text = 'Failed';
@@ -117,12 +153,21 @@ class _StatusBadge extends StatelessWidget {
         break;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
       ),
-      child: Text(text, style: TextStyle(fontSize: 12, color: color)),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
     );
   }
 }
+

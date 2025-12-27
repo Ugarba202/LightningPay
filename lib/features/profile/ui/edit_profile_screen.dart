@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constant/contry_code.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/themes/app_colors.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -84,88 +85,86 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
+      backgroundColor: AppColors.bgDark,
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        backgroundColor: AppColors.bgDark,
+        elevation: 0,
+      ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Full name',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
+                    _InputFieldLabel(label: 'Full Name'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
-                      validator: (v) => v == null || v.trim().length < 2
-                          ? 'Enter your name'
-                          : null,
+                      style: const TextStyle(color: AppColors.textHigh),
+                      validator: (v) => v == null || v.trim().length < 2 ? 'Enter your name' : null,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
-                    Text('Email', style: Theme.of(context).textTheme.bodyLarge),
+                    _InputFieldLabel(label: 'Email Address'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(hintText: 'Email'),
-                      // We allow editing email for now
-                      validator: (v) =>
-                          v != null &&
-                              RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())
+                      style: const TextStyle(color: AppColors.textHigh),
+                      decoration: const InputDecoration(hintText: 'Enter your email'),
+                      validator: (v) => v != null && RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())
                           ? null
                           : 'Enter a valid email',
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
-                    Text(
-                      'Username',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
+                    _InputFieldLabel(label: 'Username'),
                     const SizedBox(height: 8),
-                    TextFormField(controller: _usernameController),
-                    const SizedBox(height: 12),
-
-                    Text(
-                      'Country',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                    TextFormField(
+                      controller: _usernameController,
+                      style: const TextStyle(color: AppColors.textHigh),
+                      decoration: const InputDecoration(
+                        prefixText: '@ ',
+                        prefixStyle: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      ),
                     ),
+                    const SizedBox(height: 20),
+
+                    _InputFieldLabel(label: 'Country'),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<Country>(
                       value: _selectedCountry,
-                      items: supportedCountries
-                          .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text('${c.flag} ${c.name}'),
-                            ),
-                          )
-                          .toList(),
+                      dropdownColor: AppColors.surfaceDark,
+                      style: const TextStyle(color: AppColors.textHigh),
+                      items: supportedCountries.map((c) => DropdownMenuItem(
+                        value: c,
+                        child: Text('${c.flag} ${c.name}'),
+                      )).toList(),
                       onChanged: (v) {
                         if (v != null) setState(() => _selectedCountry = v);
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
-                    Text('Phone', style: Theme.of(context).textTheme.bodyLarge),
+                    _InputFieldLabel(label: 'Phone Number'),
                     const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 14,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.cardDark,
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
                             '${_selectedCountry.flag} ${_selectedCountry.dialCode}',
+                            style: const TextStyle(color: AppColors.textHigh, fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -173,40 +172,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           child: TextFormField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
+                            style: const TextStyle(color: AppColors.textHigh),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
-                    Text(
-                      'Recovery phrase',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
+                    _InputFieldLabel(label: 'Recovery Phrase'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _recoveryController,
                       maxLines: 3,
+                      style: const TextStyle(color: AppColors.textHigh, fontFamily: 'monospace', fontSize: 13),
                       decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                        hintText: 'Enter your 12 or 24 word recovery phrase...',
                       ),
                     ),
 
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _save,
-                            child: const Text('Save'),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 40),
+                    ElevatedButton(
+                      onPressed: _save,
+                      child: const Text('Save Changes'),
                     ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
+    );
+  }
+}
+
+class _InputFieldLabel extends StatelessWidget {
+  final String label;
+  const _InputFieldLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: AppColors.textMed,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }

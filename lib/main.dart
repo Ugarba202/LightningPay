@@ -17,6 +17,8 @@ class LightningPayApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'LightningPay',
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark,
       home: const SplashScreen(),
     );
   }

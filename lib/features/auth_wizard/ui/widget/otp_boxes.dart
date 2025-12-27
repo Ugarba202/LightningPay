@@ -95,12 +95,19 @@ class _OtpBoxesState extends State<OtpBoxes> {
           width: 48,
           height: 56,
           decoration: BoxDecoration(
-            color: filled ? widget.activeColor.withOpacity(0.06) : Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            color: filled ? widget.activeColor.withOpacity(0.12) : AppColors.surfaceDark,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: filled ? widget.activeColor : AppColors.border,
+              color: filled ? widget.activeColor : AppColors.border.withOpacity(0.5),
               width: filled ? 2 : 1,
             ),
+            boxShadow: filled ? [
+              BoxShadow(
+                color: widget.activeColor.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              )
+            ] : null,
           ),
           child: Center(
             child: TextField(
@@ -109,9 +116,9 @@ class _OtpBoxesState extends State<OtpBoxes> {
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: filled ? widget.activeColor : null,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: filled ? widget.activeColor : AppColors.textHigh,
               ),
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               maxLength: 1,

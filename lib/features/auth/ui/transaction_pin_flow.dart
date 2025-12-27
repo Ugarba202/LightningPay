@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/themes/app_colors.dart';
+import '../../../core/themes/widgets/glass_card.dart';
 import '../../auth_wizard/ui/widget/pin_layout.dart';
 import '../../auth_wizard/ui/widget/otp_boxes.dart';
 
@@ -88,199 +90,234 @@ class _TransactionPinFlowState extends State<TransactionPinFlow> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use a light translucent overlay so the background isn't black
-      backgroundColor: Colors.white.withOpacity(0.92),
-      body: Center(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          child: _isSaving
-              ? _buildSaving()
-              : _step == 0
-              ? _buildChoice()
-              : _step == 1
-              ? _buildCreate()
-              : _buildConfirm(),
-        ),
+      backgroundColor: AppColors.bgDark,
+      body: Stack(
+        children: [
+          // Background Gradient decoration
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.95, end: 1.0).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: _isSaving
+                  ? _buildSaving()
+                  : _step == 0
+                      ? _buildChoice()
+                      : _step == 1
+                          ? _buildCreate()
+                          : _buildConfirm(),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildChoice() {
-    final mq = MediaQuery.of(context).size;
-    final maxH = mq.height * 0.8;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 360, maxHeight: maxH),
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: maxH),
-          child: Center(
-            child: Container(
-              key: const ValueKey('choice'),
-              padding: const EdgeInsets.all(20),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GlassCard(
+        key: const ValueKey('choice'),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Secure your transactions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Choose how you want to secure your transactions'),
-                  const SizedBox(height: 12),
+              child: const Icon(Icons.shield_rounded, size: 40, color: AppColors.primary),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Secure Transactions',
+              style: TextStyle(
+                color: AppColors.textHigh,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Choose how you want to authorize your payments and security changes.',
+              style: TextStyle(color: AppColors.textMed, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 40),
 
-                  // Toggle between enabling fingerprint and creating a PIN
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Expanded(
-                        child: Text('Use fingerprint to approve transactions'),
+            // Toggle Biometrics
+            InkWell(
+              onTap: () => setState(() => _useBiometricsSelected = !_useBiometricsSelected),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.fingerprint_rounded, color: AppColors.primary),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Use Biometrics',
+                        style: TextStyle(color: AppColors.textHigh, fontWeight: FontWeight.w600),
                       ),
-                      Switch(
-                        value: _useBiometricsSelected,
-                        onChanged: (v) =>
-                            setState(() => _useBiometricsSelected = v),
-                        activeColor: Colors.orange,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _useBiometricsSelected
-                              ? _enableBiometrics
-                              : () => setState(() => _step = 1),
-                          child: Text(
-                            _useBiometricsSelected
-                                ? 'Enable fingerprint'
-                                : 'Create transaction PIN',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () {
-                      // Skip for now
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('Skip for now'),
-                  ),
-                ],
+                    ),
+                    Switch(
+                      value: _useBiometricsSelected,
+                      onChanged: (v) => setState(() => _useBiometricsSelected = v),
+                      activeColor: AppColors.primary,
+                      activeTrackColor: AppColors.primary.withOpacity(0.3),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+
+            const SizedBox(height: 32),
+
+            ElevatedButton(
+              onPressed: _useBiometricsSelected ? _enableBiometrics : () => setState(() => _step = 1),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+              ),
+              child: Text(
+                _useBiometricsSelected ? 'Enable Biometrics' : 'Continue to PIN',
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Skip for now',
+                style: TextStyle(color: AppColors.textLow, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildCreate() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 360),
-      child: SingleChildScrollView(
-        child: Container(
-          key: const ValueKey('create'),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 6),
-              const Text(
-                'Create 4-digit PIN',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GlassCard(
+        key: const ValueKey('create'),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Create PIN',
+              style: TextStyle(
+                color: AppColors.textHigh,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 12),
-              const Text('This PIN will be required to approve transactions'),
-              const SizedBox(height: 20),
-
-              // Inline create UI (includes dots and keypad)
-              _InlinePinCreate(
-                onCompleted: (pin) => _onCreatePinCompleted(pin),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Set a 4-digit PIN for your transactions.',
+              style: TextStyle(color: AppColors.textMed, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 40),
+            _InlinePinCreate(
+              onCompleted: _onCreatePinCompleted,
+            ),
+            const SizedBox(height: 24),
+            if (!widget.forceCreate)
+              TextButton(
+                onPressed: () => setState(() => _step = 0),
+                child: Text('Back', style: TextStyle(color: AppColors.textLow)),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildConfirm() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 360),
-      child: SingleChildScrollView(
-        child: Container(
-          key: const ValueKey('confirm'),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 6),
-              const Text(
-                'Confirm PIN',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GlassCard(
+        key: const ValueKey('confirm'),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Confirm PIN',
+              style: TextStyle(
+                color: AppColors.textHigh,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 12),
-              const Text('Re-enter your 4-digit PIN'),
-              const SizedBox(height: 20),
-
-              // Inline confirm UI (includes dots and keypad)
-              _InlinePinCreate(
-                pinLength: 4,
-                onCompleted: (pin) => _onConfirmPinCompleted(pin),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Please re-enter your 4-digit PIN.',
+              style: TextStyle(color: AppColors.textMed, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 40),
+            _InlinePinCreate(
+              onCompleted: _onConfirmPinCompleted,
+            ),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () => setState(() => _step = 1),
+              child: Text('Reset', style: TextStyle(color: AppColors.textLow)),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildSaving() {
-    final mq = MediaQuery.of(context).size;
-    final maxH = mq.height * 0.5;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 320, maxHeight: maxH),
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: maxH),
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 12),
-                  Text('Creating PIN...'),
-                ],
-              ),
-            ),
+    return GlassCard(
+      key: const ValueKey('saving'),
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: 24),
+          Text(
+            'Securing Wallet...',
+            style: TextStyle(color: AppColors.textHigh, fontWeight: FontWeight.bold),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -290,9 +327,8 @@ class _TransactionPinFlowState extends State<TransactionPinFlow> {
 /// registration PIN creation but tailored for 4-digit transaction PINs.
 class _InlinePinCreate extends StatefulWidget {
   final ValueChanged<String> onCompleted;
-  final int pinLength;
 
-  _InlinePinCreate({Key? key, required this.onCompleted, this.pinLength = 4})
+  _InlinePinCreate({Key? key, required this.onCompleted})
     : super(key: key);
 
   @override
@@ -334,35 +370,32 @@ class _InlinePinCreateState extends State<_InlinePinCreate>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 8),
         AnimatedBuilder(
           animation: _animController,
           builder: (context, child) {
             return Transform.scale(scale: _scale.value, child: child);
           },
           child: SizedBox(
-            height: 96,
+            height: 60,
             child: PinLayout(
               title: '',
               subtitle: '',
               pinLength: 0,
-              onKeyPressed: (value) {},
+              onKeyPressed: (_) {},
               onDelete: () {},
-              dotColor: Colors.orange,
-              dotCount: widget.pinLength,
+              dotColor: AppColors.primary,
+              dotCount: 4,
               showKeyboard: false,
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 32),
 
         // Use boxes for numeric input instead of on-screen keypad
-        Center(
-          child: OtpBoxes(
-            length: widget.pinLength,
-            onCompleted: _onBoxesCompleted,
-            activeColor: Colors.orange,
-          ),
+        OtpBoxes(
+          length: 4,
+          onCompleted: _onBoxesCompleted,
+          activeColor: AppColors.primary,
         ),
       ],
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/themes/app_colors.dart';
 
 class PinLayout extends StatelessWidget {
   final String title;
@@ -17,7 +18,7 @@ class PinLayout extends StatelessWidget {
     required this.pinLength,
     required this.onKeyPressed,
     required this.onDelete,
-    this.dotColor = Colors.black,
+    this.dotColor = AppColors.primary,
     this.dotCount = 6,
     this.showKeyboard = true,
   });
@@ -38,12 +39,20 @@ class PinLayout extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: const TextStyle(
+                        color: AppColors.textHigh,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: const TextStyle(
+                        color: AppColors.textMed,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
                     // PIN DOTS
@@ -59,12 +68,19 @@ class PinLayout extends StatelessWidget {
                             opacity: filled ? 1.0 : 0.4,
                             duration: const Duration(milliseconds: 150),
                             child: Container(
-                              margin: const EdgeInsets.all(8),
-                              width: 16,
-                              height: 16,
+                              margin: const EdgeInsets.all(10),
+                              width: 14,
+                              height: 14,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: filled ? dotColor : Colors.grey.shade300,
+                                color: filled ? dotColor : AppColors.border.withOpacity(0.5),
+                                boxShadow: filled ? [
+                                  BoxShadow(
+                                    color: dotColor.withOpacity(0.3),
+                                    blurRadius: 10,
+                                    spreadRadius: 2,
+                                  )
+                                ] : null,
                               ),
                             ),
                           ),
@@ -105,17 +121,36 @@ class _PinKeyboard extends StatelessWidget {
           ['7', '8', '9'],
           ['', '0', '⌫'],
         ])
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: row.map((key) {
-              if (key.isEmpty) {
-                return const SizedBox(width: 60);
-              }
-              return TextButton(
-                onPressed: key == '⌫' ? onDelete : () => onKeyPressed(key),
-                child: Text(key, style: const TextStyle(fontSize: 22)),
-              );
-            }).toList(),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: row.map((key) {
+                if (key.isEmpty) {
+                  return const SizedBox(width: 80);
+                }
+                final isDelete = key == '⌫';
+                return SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: TextButton(
+                    onPressed: isDelete ? onDelete : () => onKeyPressed(key),
+                    style: TextButton.styleFrom(
+                      shape: const CircleBorder(),
+                      foregroundColor: isDelete ? AppColors.error : AppColors.textHigh,
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Text(
+                      key,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: isDelete ? FontWeight.normal : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
       ],
     );

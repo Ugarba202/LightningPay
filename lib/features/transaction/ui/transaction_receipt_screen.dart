@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../model/transation_item.dart';
+import '../../../core/themes/widgets/glass_card.dart';
 
 class TransactionReceiptScreen extends StatelessWidget {
   final TransactionItem transaction;
@@ -101,189 +102,316 @@ class TransactionReceiptScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bgDark,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Receipt'),
+        title: const Text('Digital Receipt'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.bgDark.withOpacity(0.8),
+                AppColors.bgDark.withOpacity(0),
+              ],
+            ),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: const Icon(Icons.share_rounded, color: AppColors.primary),
             onPressed: () async {
               final receiptText =
                   '''
 Transaction Receipt
--------------------
 ID: ${transaction.txId}
 To: ${transaction.address}
-${transaction.username != null ? 'Username: ${transaction.username}\n' : ''}Amount: ${transaction.amount} BTC
-Fee: ${transaction.fee}
-${transaction.reason != null ? 'Reason: ${transaction.reason}\n' : ''}${transaction.note != null ? 'Note: ${transaction.note}\n' : ''}Status: ${transaction.status.toString().split('.').last}
-Date: ${transaction.date.toLocal().toString()}''';
-              // ignore: deprecated_member_use
+${transaction.username != null ? 'Recipient: ${transaction.username}\n' : ''}Amount: ${transaction.amount} BTC
+Status: ${transaction.status.name.toUpperCase()}
+Date: ${transaction.date.toLocal()}''';
               try {
-                await Share.share(receiptText, subject: 'Transaction Receipt');
+                await Share.share(receiptText, subject: 'LightningPay Receipt');
               } catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Sharing is not available on this device.'),
-                  ),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Sharing failed')));
               }
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 6,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topRight,
+            radius: 1.5,
+            colors: [AppColors.primary.withOpacity(0.05), AppColors.bgDark],
+          ),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(24, 100, 24, 24),
+          child: Column(
+            children: [
+              Hero(
+                tag: 'receipt_icon',
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
                   ),
-                ],
+                  child: const Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.primary,
+                    size: 40,
+                  ),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Transaction ID',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    transaction.txId,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const Divider(height: 20),
-                  _Row(
-                    label: 'To',
-                    value: transaction.address,
-                    onTap: () async {
-                      await Clipboard.setData(
-                        ClipboardData(text: transaction.address),
-                      );
-                      // ignore: use_build_context_synchronously
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Address copied to clipboard'),
+              const SizedBox(height: 16),
+              const Text(
+                'Proof of Payment',
+                style: TextStyle(
+                  color: AppColors.textHigh,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Verified on Bitcoin Blockchain',
+                  style: TextStyle(color: AppColors.textMed, fontSize: 12),
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // Glassmorphic Receipt Card
+              GlassCard(
+                padding: const EdgeInsets.all(24),
+                color: Colors.white.withOpacity(0.03),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _DetailSection(
+                      label: 'Transaction ID',
+                      value: transaction.txId,
+                      onTap: () {
+                        Clipboard.setData(
+                          ClipboardData(text: transaction.txId),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('ID copied')),
+                        );
+                      },
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Divider(color: AppColors.border, thickness: 0.5),
+                    ),
+
+                    _ReceiptRow(
+                      label: 'Date & Time',
+                      value: transaction.date.toLocal().toString().substring(
+                        0,
+                        19,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _ReceiptRow(
+                      label: 'Destination',
+                      value: transaction.address.length > 12
+                          ? '${transaction.address.substring(0, 12)}...'
+                          : transaction.address,
+                    ),
+                    if (transaction.username != null) ...[
+                      const SizedBox(height: 16),
+                      _ReceiptRow(
+                        label: 'Recipient',
+                        value: transaction.username!,
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    _ReceiptRow(label: 'Network Fee', value: transaction.fee),
+                    const SizedBox(height: 16),
+                    _ReceiptRow(
+                      label: 'Status',
+                      valueWidget: _StatusBadge(status: transaction.status),
+                    ),
+
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Divider(color: AppColors.border, thickness: 0.5),
+                    ),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Amount',
+                          style: TextStyle(
+                            color: AppColors.textHigh,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      );
-                    },
+                        Text(
+                          '${transaction.amount} BTC',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 48),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _downloadReceipt(context),
+                      icon: const Icon(Icons.file_download_rounded, size: 20),
+                      label: const Text('Save PDF'),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: AppColors.border.withOpacity(0.3),
+                        ),
+                        foregroundColor: AppColors.textHigh,
+                      ),
+                    ),
                   ),
-                  if (transaction.username != null &&
-                      transaction.username!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _Row(label: 'Username', value: transaction.username!),
-                  ],
-                  const SizedBox(height: 8),
-                  _Row(label: 'Amount', value: '${transaction.amount} BTC'),
-                  const SizedBox(height: 8),
-                  _Row(label: 'Network Fee', value: transaction.fee),
-
-                  if (transaction.reason != null &&
-                      transaction.reason!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _Row(label: 'Reason', value: transaction.reason!),
-                  ],
-                  if (transaction.note != null &&
-                      transaction.note!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _Row(label: 'Note', value: transaction.note!),
-                  ],
-
-                  const SizedBox(height: 8),
-
-                  _Row(
-                    label: 'Status',
-                    valueWidget: _StatusBadge(status: transaction.status),
-                  ),
-                  const SizedBox(height: 8),
-                  _Row(
-                    label: 'Date',
-                    value: transaction.date.toLocal().toString(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _printReceipt(context),
+                      icon: const Icon(Icons.print_rounded, size: 20),
+                      label: const Text('Print'),
+                    ),
                   ),
                 ],
               ),
-            ),
 
-            const Spacer(),
-
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.print_outlined),
-                    label: const Text('Print'),
-                    onPressed: () => _printReceipt(context),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Close',
+                  style: TextStyle(
+                    color: AppColors.textLow,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.download),
-                    label: const Text('Download Receipt'),
-                    onPressed: () => _downloadReceipt(context),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _Row extends StatelessWidget {
+class _DetailSection extends StatelessWidget {
   final String label;
-  final String? value;
-  final Widget? valueWidget;
-  final VoidCallback? onTap;
+  final String value;
+  final VoidCallback onTap;
 
-  const _Row({required this.label, this.value, this.valueWidget, this.onTap});
+  const _DetailSection({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: const TextStyle(color: Colors.black54)),
-            Flexible(
-              child:
-                  valueWidget ??
-                  Text(
-                    value ?? '',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-            ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textLow,
+            letterSpacing: 1.2,
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppColors.textHigh,
+                    fontSize: 14,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.copy_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
+
+class _ReceiptRow extends StatelessWidget {
+  final String label;
+  final String? value;
+  final Widget? valueWidget;
+
+  const _ReceiptRow({required this.label, this.value, this.valueWidget});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: AppColors.textMed, fontSize: 13)),
+        valueWidget ??
+            Text(
+              value!,
+              style: const TextStyle(
+                color: AppColors.textHigh,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+      ],
+    );
+  }
+}
+
+// Removed old _Row class - replaced by _ReceiptRow
 
 class _StatusBadge extends StatelessWidget {
   final TransactionStatus status;
@@ -309,10 +437,11 @@ class _StatusBadge extends StatelessWidget {
         break;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
       ),
       child: Text(
         text,

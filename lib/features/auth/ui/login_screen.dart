@@ -103,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bgDark,
       body: SafeArea(
         child: _step == 0 ? _buildEmailStep(textTheme) : _buildPinStep(),
       ),

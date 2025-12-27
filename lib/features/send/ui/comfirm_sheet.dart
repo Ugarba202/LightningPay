@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
+import '../../../core/themes/widgets/glass_card.dart';
 import 'transaction_result_screen.dart';
 import '../../transaction/data/transaction_storage.dart';
 import '../../transaction/model/transation_item.dart';
@@ -9,16 +10,12 @@ class SendConfirmSheet extends StatefulWidget {
   final String? address;
   final String? username;
   final String? amount;
-  final String? reason;
-  final String? note;
 
   const SendConfirmSheet({
     super.key,
     this.address,
     this.username,
     this.amount,
-    this.reason,
-    this.note,
   });
 
   @override
@@ -30,29 +27,20 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
 
   Future<Map<String, dynamic>> _simulateSend() async {
     setState(() => _isSending = true);
-    // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
-
-    final success = Random().nextDouble() < 0.85; // 85% success rate
-    final txId = List.generate(
-      24,
-      (_) => Random().nextInt(16).toRadixString(16),
-    ).join();
+    final success = Random().nextDouble() < 0.95; // High success rate for demo
+    final txId = List.generate(24, (_) => Random().nextInt(16).toRadixString(16)).join();
     setState(() => _isSending = false);
-
     return {'success': success, 'txId': txId};
   }
 
   void _onSendNow() async {
     final result = await _simulateSend();
+    if (!mounted) return;
+    Navigator.of(context).pop();
 
-    // Close the bottom sheet first
-    if (mounted) Navigator.of(context).pop();
-
-    // Save transaction to local history
     final success = result['success'] as bool;
     final txId = result['txId'] as String;
-
     final double amountVal = double.tryParse(widget.amount ?? '') ?? 0.0;
 
     await TransactionStorage.addTransaction(
@@ -64,20 +52,15 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
             : 'Failed send',
         date: DateTime.now(),
         amount: amountVal,
-        type: success ? TransactionType.sent : TransactionType.sent,
-        status: success
-            ? TransactionStatus.completed
-            : TransactionStatus.failed,
+        type: TransactionType.sent,
+        status: success ? TransactionStatus.completed : TransactionStatus.failed,
         txId: txId,
         address: widget.address ?? 'Unknown',
         username: widget.username,
         fee: '0.0001 BTC',
-        reason: widget.reason,
-        note: widget.note,
       ),
     );
 
-    // Then navigate to the result screen
     if (mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -85,12 +68,10 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
             success: success,
             address: widget.address ?? 'Unknown',
             username: widget.username,
-            amount: widget.amount ?? '—',
+            amount: widget.amount ?? '0.00',
             fee: '0.0001 BTC',
             txId: txId,
-            reason: widget.reason,
-            note: widget.note,
-            message: success ? null : 'Network error',
+            message: success ? null : 'Transaction verification failed',
           ),
         ),
       );
@@ -100,20 +81,37 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.bgDark.withOpacity(0.95),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border.all(color: AppColors.border.withOpacity(0.2)),
       ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
       child: _isSending
           ? SizedBox(
-              height: 160,
+              height: 250,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 12),
-                  Text('Sending transaction...'),
+                children: [
+                  const SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Broadcasting Transaction...',
+                    style: TextStyle(
+                      color: AppColors.textHigh,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Securing your payment on the Bitcoin network',
+                    style: TextStyle(color: AppColors.textMed, fontSize: 13),
+                  ),
                 ],
               ),
             )
@@ -121,73 +119,73 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.textLow,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-
+                const SizedBox(height: 24),
                 Text(
-                  'Confirm Transaction',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  'Review Payment',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textMed,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
                 ),
                 const SizedBox(height: 16),
-
-                if (widget.username != null &&
-                    widget.username!.isNotEmpty) ...[
-                  _Row(label: 'Username', value: widget.username!),
-                  const SizedBox(height: 8),
-                ],
-
-                if (widget.address != null) ...[
-                  _Row(
-                    label: 'Address',
-                    value:
-                        widget.address!.length > 20
-                            ? '${widget.address!.substring(0, 8)}...${widget.address!.substring(widget.address!.length - 8)}'
-                            : widget.address!,
+                Center(
+                  child: Text(
+                    '${widget.amount} BTC',
+                    style: const TextStyle(
+                      color: AppColors.textHigh,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                ],
-
-                _Row(label: 'Amount', value: widget.amount ?? '—'),
-                _Row(label: 'Fee', value: '0.0001 BTC'),
-
-                if (widget.reason != null && widget.reason!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _Row(label: 'Reason', value: widget.reason!),
-                ],
-                if (widget.note != null && widget.note!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _Row(label: 'Note', value: widget.note!),
-                ],
-
-                const SizedBox(height: 8),
-                const Divider(),
-                const SizedBox(height: 8),
-
-                // If amount is numeric show total, else show placeholder
-                _Row(
-                  label: 'Total',
-                  value: widget.amount != null ? widget.amount! : '—',
                 ),
-
-                const SizedBox(height: 24),
-
+                const SizedBox(height: 32),
+                
+                GlassCard(
+                  padding: const EdgeInsets.all(20),
+                  color: Colors.white.withOpacity(0.03),
+                  child: Column(
+                    children: [
+                      _DetailRow(
+                        label: 'Recipient',
+                        value: widget.username ??
+                            (widget.address != null
+                                ? (widget.address!.length > 12
+                                    ? '${widget.address!.substring(0, 10)}...'
+                                    : widget.address!)
+                                : '—'),
+                        isPrimary: true,
+                      ),
+                      const SizedBox(height: 16),
+                      _DetailRow(label: 'Network Fee', value: '0.0001 BTC'),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 40),
                 ElevatedButton(
                   onPressed: _onSendNow,
-                  child: const Text('Send Now'),
+                  child: const Text('Confirm and Send'),
                 ),
-
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: Text(
+                    'Cancel Payment',
+                    style: TextStyle(color: AppColors.textLow, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -195,23 +193,29 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
   }
 }
 
-class _Row extends StatelessWidget {
+class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
+  final bool isPrimary;
 
-  const _Row({required this.label, required this.value});
+  const _DetailRow({required this.label, required this.value, this.isPrimary = false});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: AppColors.textMed, fontSize: 13)),
+        Text(
+          value,
+          style: TextStyle(
+            color: isPrimary ? AppColors.primary : AppColors.textHigh,
+            fontWeight: isPrimary ? FontWeight.bold : FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+      ],
     );
   }
 }
+

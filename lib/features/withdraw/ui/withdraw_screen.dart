@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/themes/widgets/glass_card.dart';
 import '../logic/withdraw_logic.dart';
 
 class WithdrawScreen extends StatefulWidget {
@@ -57,7 +58,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     
-    Navigator.pop(context); // Go back to dashboard handing success
+    Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Withdraw Successful! Balance Updated.')),
     );
@@ -66,103 +67,99 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Withdraw Funds')),
+      appBar: AppBar(
+        title: const Text('Withdraw Funds'),
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Type Selection
-            Text('Withdraw Type', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedType,
-                  isExpanded: true,
-                  items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (val) => setState(() => _selectedType = val!),
+            _InputSection(
+              label: 'Withdrawal Method',
+              child: _SelectionContainer(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedType,
+                    dropdownColor: AppColors.surfaceDark,
+                    isExpanded: true,
+                    items: _types.map((t) => DropdownMenuItem(
+                      value: t,
+                      child: Text(t, style: const TextStyle(color: AppColors.textHigh)),
+                    )).toList(),
+                    onChanged: (val) => setState(() => _selectedType = val!),
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 24),
 
-            // Destination Input
-            Text(
-              _selectedType == 'To Bank Account' ? 'Account Number' : 'Username (@handle)', 
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _destinationController,
-              decoration: InputDecoration(
-                hintText: _selectedType == 'To Bank Account' ? 'Enter Bank Account Number' : 'Enter Username',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            _InputSection(
+              label: _selectedType == 'To Bank Account' ? 'Account Number' : 'Recipient Username',
+              child: TextField(
+                controller: _destinationController,
+                style: const TextStyle(color: AppColors.textHigh),
+                decoration: InputDecoration(
+                  hintText: _selectedType == 'To Bank Account' ? 'Enter 10-digit number' : 'Enter @handle',
+                ),
               ),
             ),
             const SizedBox(height: 24),
 
-            // Amount Input
-            Text('Amount (BTC)', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                hintText: 'Enter amount to withdraw',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                errorText: _error,
+            _InputSection(
+              label: 'Amount to Withdraw (BTC)',
+              child: TextField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textHigh),
+                decoration: InputDecoration(
+                  hintText: '0.00',
+                  suffixText: 'BTC',
+                  suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                  errorText: _error,
+                ),
+                onChanged: (_) => setState(() => _error = null),
               ),
-              onChanged: (_) => setState(() => _error = null),
             ),
 
             const SizedBox(height: 32),
 
-            // Summary
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
+            GlassCard(
+              padding: const EdgeInsets.all(20),
+              color: AppColors.error.withOpacity(0.03),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Withdraw Method:'),
-                      Text(_selectedType == 'To Bank Account' ? 'Standard Transfer' : 'Instant P2P'),
-                    ],
+                  _SummaryRow(
+                    label: 'Processing Time', 
+                    value: _selectedType == 'To Bank Account' ? '1-2 Business Days' : 'Instant',
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Processing Time:'),
-                      Text(_selectedType == 'To Bank Account' ? '1-2 Days' : 'Instant'),
-                    ],
+                  const SizedBox(height: 12),
+                  _SummaryRow(label: 'Network Fee', value: '0.00005 BTC'),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(color: AppColors.border, thickness: 0.5),
+                  ),
+                  _SummaryRow(
+                    label: 'Total Deduction',
+                    value: '${(double.tryParse(_amountController.text) ?? 0 + 0.00005).toStringAsFixed(6)} BTC',
+                    isBold: true,
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 48),
 
             ElevatedButton(
               onPressed: _isLoading ? null : _onWithdraw,
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.redAccent, // Red for outflow
+                backgroundColor: AppColors.error.withOpacity(0.8),
               ),
               child: _isLoading 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Confirm Withdraw'),
+                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                : const Text('Confirm Withdrawal'),
             ),
           ],
         ),
@@ -170,3 +167,76 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     );
   }
 }
+
+class _InputSection extends StatelessWidget {
+  final String label;
+  final Widget child;
+
+  const _InputSection({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textLow,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        child,
+      ],
+    );
+  }
+}
+
+class _SelectionContainer extends StatelessWidget {
+  final Widget child;
+
+  const _SelectionContainer({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withOpacity(0.3)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isBold;
+
+  const _SummaryRow({required this.label, required this.value, this.isBold = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: AppColors.textMed, fontSize: 14)),
+        Text(
+          value,
+          style: TextStyle(
+            color: isBold ? AppColors.error : AppColors.textHigh,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+            fontSize: isBold ? 16 : 14,
+          ),
+        ),
+      ],
+    );
+  }
+}
+

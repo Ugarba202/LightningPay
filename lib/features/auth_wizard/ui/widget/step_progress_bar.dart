@@ -20,7 +20,7 @@ class StepProgressBar extends StatelessWidget {
           'Step $currentStep of $totalSteps',
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textMed),
         ),
         Expanded(
           child: Padding(
