@@ -35,10 +35,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.linux:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return web;
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
@@ -71,4 +68,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'lightningpay-13df6.firebasestorage.app',
     iosBundleId: 'com.example.lightingPay',
   );
+
 }
