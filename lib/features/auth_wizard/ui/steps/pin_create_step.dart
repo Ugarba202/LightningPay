@@ -35,9 +35,11 @@ class _PinCreateStepState extends State<PinCreateStep> {
       title: 'Create login PIN',
       subtitle: 'This 6-digit PIN unlocks your app',
       pinLength: _pin.length,
+      pin: _pin,
       onKeyPressed: _onKeyPressed,
       onDelete: _onDelete,
-      dotColor: Colors.orange, // show red for creating password/PIN
+      dotColor: Colors.orange, 
+      useDots: true,
     );
   }
 }

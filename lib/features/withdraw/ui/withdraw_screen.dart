@@ -6,9 +6,10 @@ import '../../convert/ui/convert_screen.dart';
 import '../../../../core/data/wallet_store.dart';
 import '../../transaction/data/transaction_storage.dart';
 import '../../transaction/model/transation_item.dart';
+import '../../../../core/storage/auth_storage.dart';
+import '../../../../core/constant/contry_code.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/themes/widgets/transaction_pin_sheet.dart';
-// Optional if using WalletStore directly
 
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
@@ -27,6 +28,25 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
   bool _isLoading = false;
   String? _error;
+  String _localCurrency = 'USD';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserCountry();
+  }
+
+  Future<void> _loadUserCountry() async {
+    final countryName = await AuthStorage.getCountry();
+    if (countryName != null) {
+      final country = Country.getByName(countryName);
+      if (country != null) {
+        setState(() {
+          _localCurrency = country.currencyCode;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -74,12 +94,12 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       title: 'Withdrawal',
       date: DateTime.now(),
       amount: double.tryParse(_amountController.text) ?? 0,
-      currency: 'USD',
+      currency: _localCurrency,
       type: TransactionType.withdrawal,
       status: TransactionStatus.completed,
       txId: const Uuid().v4(),
       address: _destinationController.text,
-      fee: '1.50 USD',
+      fee: '1.50 $_localCurrency',
       reason: _selectedType,
     ));
 
@@ -88,7 +108,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Withdraw Successful! Balance Updated.')),
+      SnackBar(content: Text('Withdraw Successful! Balance Updated.')),
     );
   }
 
@@ -135,7 +155,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                                     MaterialPageRoute(builder: (_) => const ConvertScreen()),
                                   ),
                                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                                  child: const Text('Convert BTC to USD first', style: TextStyle(color: AppColors.primary)),
+                                  child: Text('Convert BTC to $_localCurrency first', style: const TextStyle(color: AppColors.primary)),
                                 ),
                               ],
                             ),
@@ -188,7 +208,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textHigh),
                 decoration: InputDecoration(
                   hintText: '0.00',
-                  suffixText: 'USD',
+                  suffixText: _localCurrency,
                   suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                   errorText: _error,
                 ),
@@ -208,14 +228,14 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     value: _selectedType == 'To Bank Account' ? '1-2 Business Days' : 'Instant',
                   ),
                   const SizedBox(height: 12),
-                  _SummaryRow(label: 'Network Fee', value: '1.50 USD'),
+                  _SummaryRow(label: 'Network Fee', value: '1.50 $_localCurrency'),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(color: AppColors.border, thickness: 0.5),
                   ),
                   _SummaryRow(
                     label: 'Amount to Receive',
-                    value: '\$${(double.tryParse(_amountController.text) ?? 0).toStringAsFixed(2)}',
+                    value: '${_localCurrency == 'USD' ? '\$' : ''}${(double.tryParse(_amountController.text) ?? 0).toStringAsFixed(2)} $_localCurrency',
                     isBold: true,
                   ),
                 ],

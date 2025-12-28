@@ -62,9 +62,11 @@ class _PinConfirmStepState extends State<PinConfirmStep> {
             title: 'Confirm PIN',
             subtitle: 'Re-enter your PIN to continue',
             pinLength: _pin.length,
+            pin: _pin,
             onKeyPressed: _onKeyPressed,
             onDelete: _onDelete,
             dotColor: widget.dotColor,
+            useDots: true,
           ),
         ),
 

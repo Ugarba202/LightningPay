@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../core/themes/widgets/glass_card.dart';
-import '../../auth_wizard/ui/widget/pin_layout.dart';
 import '../../auth_wizard/ui/widget/otp_boxes.dart';
 
 /// Full-screen flow to create a 4-digit transaction PIN or enable biometrics.
@@ -338,7 +337,7 @@ class _InlinePinCreate extends StatefulWidget {
 class _InlinePinCreateState extends State<_InlinePinCreate>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
-  late final Animation<double> _scale;
+  late final Animation<double> scale;
 
   @override
   void initState() {
@@ -347,7 +346,7 @@ class _InlinePinCreateState extends State<_InlinePinCreate>
       vsync: this,
       duration: const Duration(milliseconds: 160),
     );
-    _scale = Tween<double>(
+    scale = Tween<double>(
       begin: 1.0,
       end: 1.06,
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
@@ -370,28 +369,7 @@ class _InlinePinCreateState extends State<_InlinePinCreate>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AnimatedBuilder(
-          animation: _animController,
-          builder: (context, child) {
-            return Transform.scale(scale: _scale.value, child: child);
-          },
-          child: SizedBox(
-            height: 60,
-            child: PinLayout(
-              title: '',
-              subtitle: '',
-              pinLength: 0,
-              onKeyPressed: (_) {},
-              onDelete: () {},
-              dotColor: AppColors.primary,
-              dotCount: 4,
-              showKeyboard: false,
-            ),
-          ),
-        ),
-        const SizedBox(height: 32),
-
-        // Use boxes for numeric input instead of on-screen keypad
+        // Use boxes for numeric input
         OtpBoxes(
           length: 4,
           onCompleted: _onBoxesCompleted,

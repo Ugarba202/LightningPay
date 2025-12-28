@@ -19,7 +19,9 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   void initState() {
     super.initState();
     _addressController.addListener(() => setState(() {}));
-    _amountController.addListener(() => setState(() {})); // Listen to amount changes
+    _amountController.addListener(
+      () => setState(() {}),
+    ); // Listen to amount changes
   }
 
   bool get canContinue {
@@ -38,9 +40,9 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   }
 
   Future<void> _scanQr() async {
-    final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const _QrScannerScreen()),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const _QrScannerScreen()));
 
     if (result != null && result.isNotEmpty) {
       setState(() {
@@ -55,15 +57,15 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
 
   void _showConfirmSheet() {
     final addressText = _addressController.text.trim();
-    // Simple heuristic: if it contains spaces or is short, treat as username? 
+    // Simple heuristic: if it contains spaces or is short, treat as username?
     // Or just treat everything as address unless it looks like a username?
     // Requirement says: "Any input that is not a standard wallet address format ... will be treated as a Username"
     // Let's check length for now. Bitcoin addresses are usually 26-35 characters.
     // Be generous and say if length < 25, it's a username. Or if it doesn't start with 1, 3, or bc1?
-    
+
     // For this mock:
-    final isUsername = addressText.length < 25; 
-    
+    final isUsername = addressText.length < 25;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -79,10 +81,7 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Send Payment'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Send Payment'), elevation: 0),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(24),
@@ -97,7 +96,10 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
                 decoration: InputDecoration(
                   hintText: 'Address or Username',
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+                    icon: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: AppColors.primary,
+                    ),
                     onPressed: _scanQr,
                   ),
                 ),
@@ -108,12 +110,21 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
               child: TextField(
                 controller: _amountController,
                 enabled: isAmountEnabled,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textHigh),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textHigh,
+                ),
                 decoration: const InputDecoration(
                   hintText: '0.00',
                   suffixText: 'BTC',
-                  suffixStyle: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                  suffixStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ),
@@ -185,17 +196,26 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scanWindowSize = const Size(260, 260);
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Scan QR Code'),
         backgroundColor: Colors.transparent,
+        elevation: 0,
         foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Stack(
         children: [
           MobileScanner(
             controller: _controller,
+            scanWindow: Rect.fromCenter(
+              center: MediaQuery.of(context).size.center(Offset.zero),
+              width: scanWindowSize.width,
+              height: scanWindowSize.height,
+            ),
             onDetect: (capture) {
               final barcodes = capture.barcodes;
               if (barcodes.isNotEmpty) {
@@ -208,28 +228,88 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
               }
             },
           ),
-          Center(
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.primary, width: 2),
-                borderRadius: BorderRadius.circular(24),
-              ),
+          CustomPaint(
+            painter: _ScannerOverlayPainter(
+              borderColor: AppColors.primary,
+              borderRadius: 24,
+              borderWidth: 3,
+              overlayColor: Colors.black,
+              scanWindowSize: scanWindowSize,
             ),
+            child: Container(),
           ),
           Positioned(
-            bottom: 60,
+            bottom: 80,
             left: 24,
             right: 24,
             child: Text(
               'Align the QR code within the frame to scan',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _ScannerOverlayPainter extends CustomPainter {
+  final Color borderColor;
+  final double borderRadius;
+  final double borderWidth;
+  final Color overlayColor;
+  final Size scanWindowSize;
+
+  _ScannerOverlayPainter({
+    required this.borderColor,
+    required this.borderRadius,
+    required this.borderWidth,
+    required this.overlayColor,
+    required this.scanWindowSize,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final rect = Rect.fromCenter(
+      center: center,
+      width: scanWindowSize.width,
+      height: scanWindowSize.height,
+    );
+
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final cutoutPath = Path()
+      ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(borderRadius)));
+
+    final overlayPath = Path.combine(
+      PathOperation.difference,
+      backgroundPath,
+      cutoutPath,
+    );
+
+    final overlayPaint = Paint()
+      ..color = overlayColor
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(overlayPath, overlayPaint);
+
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(borderRadius)),
+      borderPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

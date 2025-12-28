@@ -7,20 +7,24 @@ class PinLayout extends StatelessWidget {
   final int pinLength;
   final Function(String) onKeyPressed;
   final VoidCallback onDelete;
-  final Color dotColor; // color for filled dot
-  final int dotCount; // number of dots to show
+  final String pin; // actual pin string
+  final Color dotColor; // color for filled box border (if used)
+  final int dotCount; // number of boxes to show
   final bool showKeyboard; // whether to show on-screen keypad
+  final bool useDots; // whether to show dots instead of boxes
 
   const PinLayout({
     super.key,
     required this.title,
     required this.subtitle,
     required this.pinLength,
+    required this.pin,
     required this.onKeyPressed,
     required this.onDelete,
     this.dotColor = AppColors.primary,
     this.dotCount = 6,
     this.showKeyboard = true,
+    this.useDots = false,
   });
 
   @override
@@ -54,33 +58,62 @@ class PinLayout extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 32),
-                    // PIN DOTS
+                    const SizedBox(height: 48),
+                    // PIN DISPLAY (DOTS or BOXES)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(dotCount, (index) {
                         final filled = index < pinLength;
-                        return AnimatedScale(
-                          scale: filled ? 1.2 : 1.0,
-                          duration: const Duration(milliseconds: 150),
-                          curve: Curves.easeOut,
-                          child: AnimatedOpacity(
-                            opacity: filled ? 1.0 : 0.4,
+                        
+                        if (useDots) {
+                          return AnimatedScale(
+                            scale: filled ? 1.2 : 1.0,
                             duration: const Duration(milliseconds: 150),
-                            child: Container(
-                              margin: const EdgeInsets.all(10),
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: filled ? dotColor : AppColors.border.withOpacity(0.5),
-                                boxShadow: filled ? [
-                                  BoxShadow(
-                                    color: dotColor.withOpacity(0.3),
-                                    blurRadius: 10,
-                                    spreadRadius: 2,
-                                  )
-                                ] : null,
+                            curve: Curves.easeOut,
+                            child: AnimatedOpacity(
+                              opacity: filled ? 1.0 : 0.4,
+                              duration: const Duration(milliseconds: 150),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 10),
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: filled ? dotColor : AppColors.border.withOpacity(0.5),
+                                  boxShadow: filled ? [
+                                    BoxShadow(
+                                      color: dotColor.withOpacity(0.3),
+                                      blurRadius: 10,
+                                      spreadRadius: 2,
+                                    )
+                                  ] : null,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // BOX STYLE (default)
+                        String char = '';
+                        if (filled && index < pin.length) {
+                          char = pin[index];
+                        }
+                        
+                        return Container(
+                          width: 46,
+                          height: 52,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5E7EB),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              char,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),

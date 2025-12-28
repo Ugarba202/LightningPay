@@ -4,6 +4,8 @@ import '../../../../core/themes/widgets/glass_card.dart';
 import '../../../../core/data/wallet_store.dart';
 import '../../transaction/data/transaction_storage.dart';
 import '../../transaction/model/transation_item.dart';
+import '../../../../core/storage/auth_storage.dart';
+import '../../../../core/constant/contry_code.dart';
 import 'package:uuid/uuid.dart';
 
 class ConvertScreen extends StatefulWidget {
@@ -16,13 +18,41 @@ class ConvertScreen extends StatefulWidget {
 class _ConvertScreenState extends State<ConvertScreen> {
   final _amountController = TextEditingController();
   bool _fromBTC = true;
-  final double _mockRate = 65000.0; // 1 BTC = 65000 USD/Local
+  double _mockRate = 65000.0; // Default USD
+  String _localCurrency = 'USD';
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _amountController.addListener(() => setState(() {}));
+    _loadUserCountry();
+  }
+
+  Future<void> _loadUserCountry() async {
+    final countryName = await AuthStorage.getCountry();
+    if (countryName != null) {
+      final country = Country.getByName(countryName);
+      if (country != null) {
+        setState(() {
+          _localCurrency = country.currencyCode;
+          // Set mock rate based on currency
+          _mockRate = _getRateForCurrency(_localCurrency);
+        });
+      }
+    }
+  }
+
+  double _getRateForCurrency(String code) {
+    final rates = {
+      'NGN': 105000000.0, // 1 BTC ~ 105M NGN
+      'PKR': 18000000.0,   // 1 BTC ~ 18M PKR
+      'EUR': 60000.0,
+      'GBP': 52000.0,
+      'INR': 5500000.0,
+      'USD': 65000.0,
+    };
+    return rates[code] ?? 65000.0;
   }
 
   @override
@@ -42,10 +72,10 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
     // Record Transaction
     await TransactionStorage.addTransaction(TransactionItem(
-      title: _fromBTC ? 'BTC to USD' : 'USD to BTC',
+      title: _fromBTC ? 'BTC to $_localCurrency' : '$_localCurrency to BTC',
       date: DateTime.now(),
       amount: amount,
-      currency: _fromBTC ? 'BTC' : 'USD',
+      currency: _fromBTC ? 'BTC' : _localCurrency,
       type: TransactionType.conversion,
       status: TransactionStatus.completed,
       txId: const Uuid().v4(),
@@ -91,7 +121,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                 children: [
                   _CurrencyRow(
                     label: 'From',
-                    currency: _fromBTC ? 'BTC' : 'USD',
+                    currency: _fromBTC ? 'BTC' : _localCurrency,
                     icon: _fromBTC ? Icons.currency_bitcoin_rounded : Icons.attach_money_rounded,
                   ),
                   Padding(
@@ -107,7 +137,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                   ),
                   _CurrencyRow(
                     label: 'To',
-                    currency: _fromBTC ? 'USD' : 'BTC',
+                    currency: _fromBTC ? _localCurrency : 'BTC',
                     icon: _fromBTC ? Icons.attach_money_rounded : Icons.currency_bitcoin_rounded,
                   ),
                 ],
@@ -124,7 +154,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textHigh),
                 decoration: InputDecoration(
                   hintText: '0.00',
-                  suffixText: _fromBTC ? 'BTC' : 'USD',
+                  suffixText: _fromBTC ? 'BTC' : _localCurrency,
                   suffixStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -140,7 +170,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                   children: [
                     _DetailRow(
                       label: 'Exchange Rate',
-                      value: '1 BTC ≈ \$${_mockRate.toStringAsFixed(0)}',
+                      value: '1 BTC ≈ ${_localCurrency == 'USD' ? '\$' : ''}${_mockRate.toStringAsFixed(0)} $_localCurrency',
                     ),
                     const SizedBox(height: 12),
                     _DetailRow(
@@ -155,7 +185,7 @@ class _ConvertScreenState extends State<ConvertScreen> {
                     _DetailRow(
                       label: 'You Will Receive',
                       value: _fromBTC 
-                          ? '\$${((double.tryParse(_amountController.text) ?? 0) * _mockRate).toStringAsFixed(2)}'
+                          ? '${_localCurrency == 'USD' ? '\$' : ''}${((double.tryParse(_amountController.text) ?? 0) * _mockRate).toStringAsFixed(_localCurrency == 'USD' ? 2 : 0)} $_localCurrency'
                           : '${((double.tryParse(_amountController.text) ?? 0) / _mockRate).toStringAsFixed(8).replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "")} BTC',
                       isBold: true,
                     ),

@@ -36,7 +36,7 @@ class _TransactionPinCreateStepState extends State<TransactionPinCreateStep> {
       subtitle: 'This protects your payments',
       pinLength: _pin.length,
       onKeyPressed: _onKeyPressed,
-      onDelete: _onDelete,
+      onDelete: _onDelete, pin: '',
     );
   }
 }

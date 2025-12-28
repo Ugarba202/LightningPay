@@ -106,6 +106,7 @@ class _TransactionPinSheetState extends State<TransactionPinSheet> {
               title: 'Transaction PIN',
               subtitle: 'Enter your 4-digit PIN to authorize payment',
               pinLength: _pin.length,
+              pin: _pin,
               dotCount: 4,
               onKeyPressed: _onKeyPressed,
               onDelete: _onDelete,

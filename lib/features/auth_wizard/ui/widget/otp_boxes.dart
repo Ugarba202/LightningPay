@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import '../../../../core/themes/app_colors.dart';
 
-/// A row of one-digit boxes for OTP entry. Each box is a small TextField
-/// that accepts a single digit. Tapping a box focuses it and typing advances
-/// focus to the next box automatically. Pasting multiple digits will fill
-/// subsequent boxes.
 class OtpBoxes extends StatefulWidget {
   final int length;
   final ValueChanged<String> onCompleted;
@@ -20,7 +15,7 @@ class OtpBoxes extends StatefulWidget {
     required this.onCompleted,
     this.length = 6,
     this.initialValue,
-    this.activeColor = Colors.orange,
+    this.activeColor = AppColors.primary,
   });
 
   @override
@@ -87,27 +82,16 @@ class _OtpBoxesState extends State<OtpBoxes> {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(widget.length, (index) {
-        final filled = _controllers[index].text.isNotEmpty;
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          width: 48,
-          height: 56,
+          width: 46,
+          height: 52, // Reduced height
+          margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
-            color: filled ? widget.activeColor.withOpacity(0.12) : AppColors.surfaceDark,
+            color: const Color(0xFFE5E7EB),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: filled ? widget.activeColor : AppColors.border.withOpacity(0.5),
-              width: filled ? 2 : 1,
-            ),
-            boxShadow: filled ? [
-              BoxShadow(
-                color: widget.activeColor.withOpacity(0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ] : null,
           ),
           child: Center(
             child: TextField(
@@ -115,10 +99,10 @@ class _OtpBoxesState extends State<OtpBoxes> {
               focusNode: _focusNodes[index],
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: filled ? widget.activeColor : AppColors.textHigh,
+                color: AppColors.primary, // Changed to orange
               ),
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               maxLength: 1,
@@ -127,23 +111,21 @@ class _OtpBoxesState extends State<OtpBoxes> {
                 counterText: '',
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
+                filled: false,
               ),
               onChanged: (value) {
                 if (value.length > 1) {
-                  // Pasted multiple characters
                   _updateFromPaste(value, index);
                   return;
                 }
 
                 if (value.isNotEmpty) {
-                  // move to next
                   if (index + 1 < widget.length) {
                     _focusNodes[index + 1].requestFocus();
                   } else {
                     _focusNodes[index].unfocus();
                   }
                 } else {
-                  // empty (user pressed backspace) -> move to previous
                   if (index - 1 >= 0) {
                     _focusNodes[index - 1].requestFocus();
                     _controllers[index - 1].selection = TextSelection.collapsed(

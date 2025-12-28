@@ -6,6 +6,7 @@ import '../../transaction/data/transaction_storage.dart';
 import '../../transaction/model/transation_item.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/storage/auth_storage.dart';
+import '../../../../core/constant/contry_code.dart';
 
 class DepositScreen extends StatefulWidget {
   const DepositScreen({super.key});
@@ -22,7 +23,7 @@ class _DepositScreenState extends State<DepositScreen> {
   final List<String> _purposes = ['Household', 'Savings', 'School fees', 'Business'];
 
   String _selectedCurrency = 'USD';
-  final List<String> _currencies = ['USD', 'NGN', 'EUR']; // Removed BTC
+  List<String> _currencies = ['USD']; // Will be updated
 
   String _username = 'User';
   final String _accountNumber = 'LP-8822-1100-3344';
@@ -32,11 +33,25 @@ class _DepositScreenState extends State<DepositScreen> {
   void initState() {
     super.initState();
     _loadUser();
+    _loadUserCountry();
   }
 
   void _loadUser() async {
     final name = await AuthStorage.getUsername();
     if (name != null) setState(() => _username = name);
+  }
+
+  Future<void> _loadUserCountry() async {
+    final countryName = await AuthStorage.getCountry();
+    if (countryName != null) {
+      final country = Country.getByName(countryName);
+      if (country != null) {
+        setState(() {
+          _selectedCurrency = country.currencyCode;
+          _currencies = [_selectedCurrency];
+        });
+      }
+    }
   }
 
   @override

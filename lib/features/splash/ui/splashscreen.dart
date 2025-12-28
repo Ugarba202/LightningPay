@@ -13,7 +13,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
@@ -26,25 +27,27 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       duration: const Duration(milliseconds: 1500),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     _controller.forward();
 
-    Timer(const Duration(seconds: 3), () async {
+    Timer(const Duration(seconds: 6), () async {
       final registered = await AuthStorage.isRegistered();
       if (!mounted) return;
-      
+
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => 
-            registered ? const LoginScreen() : const OnboardingScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              registered ? const LoginScreen() : const OnboardingScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
@@ -68,10 +71,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           gradient: RadialGradient(
             center: Alignment(0, -0.2),
             radius: 1.5,
-            colors: [
-              Color(0xFF1E2631),
-              AppColors.bgDark,
-            ],
+            colors: [Color(0xFF1E2631), AppColors.bgDark],
           ),
         ),
         child: Stack(
@@ -85,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.05),
+                  color: AppColors.primaryDark.withOpacity(0.05),
                 ),
               ),
             ),
@@ -103,7 +103,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: AppColors.primaryDark.withOpacity(0.1),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -113,15 +113,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.bolt_rounded, size: 80, color: Colors.white),
+                          child: const Icon(
+                            Icons.bolt_rounded,
+                            size: 80,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 32),
                       Text(
                         'LightningPay',
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          letterSpacing: 1.2,
-                        ),
+                        style: Theme.of(context).textTheme.headlineLarge
+                            ?.copyWith(
+                              letterSpacing: 1.2,
+                              color: AppColors.primary,
+                            ),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -146,7 +152,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   height: 40,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary.withOpacity(0.5)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary.withOpacity(0.5),
+                    ),
                   ),
                 ),
               ),

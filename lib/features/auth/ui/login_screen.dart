@@ -180,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
             pinLength: _pin.length,
             onKeyPressed: _onKeyPressed,
             onDelete: _onDelete,
-            dotColor: Colors.orange,
+            dotColor: Colors.orange, pin: '',
           ),
         ),
         if (_error.isNotEmpty)
