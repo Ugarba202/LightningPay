@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "51444009038",
+    "project_id": "lightningpay-13df6",
+    "storage_bucket": "lightningpay-13df6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51444009038:android:b3c4c971e5971e5ffcdb1f",
+        "android_client_info": {
+          "package_name": "com.example.lighting_pay"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB334-u1KCw9BNcJRyZLy4SlNYFMji0oIQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51444009038:android:b89aae4a1d08fd5ffcdb1f",
+        "android_client_info": {
+          "package_name": "com.lightningpay.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB334-u1KCw9BNcJRyZLy4SlNYFMji0oIQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
