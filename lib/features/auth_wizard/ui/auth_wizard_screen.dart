@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constant/contry_code.dart';
+
+import '../../../core/service/user_service.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../core/themes/navigation/main_navigation_screen.dart';
 import '../../../core/storage/auth_storage.dart';
+
 // Steps
 import 'steps/name_step.dart';
 import 'steps/email_step.dart';
@@ -59,43 +62,40 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
   }
 
   List<Widget> _buildSteps() => [
-        NameStep(
-          showValidationNotifier: _showValidationNotifier,
-          onCompleted: (value) =>
-              _updateValidation(value, (val) => name = val),
-        ),
+    NameStep(
+      showValidationNotifier: _showValidationNotifier,
+      onCompleted: (value) => _updateValidation(value, (val) => name = val),
+    ),
 
-        EmailStep(
-          showValidationNotifier: _showValidationNotifier,
-          onCompleted: (value) =>
-              _updateValidation(value, (val) => email = val),
-        ),
+    EmailStep(
+      showValidationNotifier: _showValidationNotifier,
+      onCompleted: (value) => _updateValidation(value, (val) => email = val),
+    ),
 
-        VerifyEmailStep(onVerified: _nextStep),
+    VerifyEmailStep(onVerified: _nextStep),
 
-        CountryStep(
-          showValidationNotifier: _showValidationNotifier,
-          onCompleted: (value) {
-            country = value;
-            setState(() => _isStepValid = value != null);
-          },
-        ),
+    CountryStep(
+      showValidationNotifier: _showValidationNotifier,
+      onCompleted: (value) {
+        country = value;
+        setState(() => _isStepValid = value != null);
+      },
+    ),
 
-        PhoneStep(
-          country: supportedCountries.first,
-          onCompleted: (value) =>
-              _updateValidation(value, (val) => phone = val),
-        ),
+    PhoneStep(
+      country: supportedCountries.first,
+      onCompleted: (value) => _updateValidation(value, (val) => phone = val),
+    ),
 
-        UsernameStep(
-          showValidationNotifier: _showValidationNotifier,
-          onValidationChanged: (value) =>
-              _updateValidation(value, (val) => username = val),
-        ),
+    UsernameStep(
+      showValidationNotifier: _showValidationNotifier,
+      onValidationChanged: (value) =>
+          _updateValidation(value, (val) => username = val),
+    ),
 
-        PinCreateStep(onCompleted: _onPinCreated),
-        const SizedBox(),
-      ];
+    PinCreateStep(onCompleted: _onPinCreated),
+    const SizedBox(),
+  ];
 
   void _updateValidation(String value, Function(String?) onValid) {
     setState(() {
@@ -196,21 +196,52 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
     );
   }
 
+  // here is to store use infor
   Future<void> _onPinConfirmed() async {
     setState(() => _isConfirming = true);
 
-    final user = FirebaseAuth.instance.currentUser;
-    await user!.updatePassword(loginPin!);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('No authenticated user');
+      }
 
-    await AuthStorage.saveCredentials(email!, loginPin!);
-    await AuthStorage.markNeedTransactionSetup(true);
+      // 1️⃣ Update password (TEMP → PIN)
+      await user.updatePassword(loginPin!);
 
-    if (!mounted) return;
+      // 2️⃣ Create Firestore profile
+      final userService = UserService();
+      await userService.createUserProfile(
+        fullName: name!,
+        username: username!,
+        email: email!,
+        phone: phone!,
+        country: '${country!.flag} ${country!.name}',
+      );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-    );
+      // 3️⃣ Save locally
+      await AuthStorage.saveCredentials(email!, loginPin!);
+      await AuthStorage.saveFullName(name!);
+      await AuthStorage.saveUsername(username!);
+      await AuthStorage.saveCountry('${country!.flag} ${country!.name}');
+      await AuthStorage.savePhoneNumber(phone!);
+
+      await AuthStorage.markNeedTransactionSetup(true);
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isConfirming = false);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Setup error: $e')));
+    }
   }
 
   @override
@@ -266,8 +297,7 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
             if (_isSendingVerification)
               _overlayLoader('Sending verification email...'),
 
-            if (_isConfirming)
-              _overlayLoader('Creating your account...'),
+            if (_isConfirming) _overlayLoader('Creating your account...'),
           ],
         ),
       ),

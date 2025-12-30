@@ -1,122 +1,157 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/service/user_respiratory.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../core/themes/widgets/glass_card.dart';
+
+import '../../../core/models/user_model.dart';
 
 class ReceiveScreen extends StatelessWidget {
   const ReceiveScreen({super.key});
 
-  static const String _btcAddress = 'bc1qexampleaddress1234567890xyz';
-
   @override
   Widget build(BuildContext context) {
+    final userRepo = UserRepository();
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Receive Bitcoin'),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            
-            // Glassmorphic QR Container
-            _QrContainer(address: _btcAddress),
+      appBar: AppBar(title: const Text('Receive Bitcoin'), elevation: 0),
+      body: StreamBuilder<AppUser>(
+        stream: userRepo.getCurrentUser(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            const SizedBox(height: 48),
+          final user = snapshot.data!;
+          final usernameAddress = '@${user.username}';
+          final qrData = 'lightningpay:$usernameAddress';
 
-            // Address Label
-            Text(
-              'Your Bitcoin Address',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textMed,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Address Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border.withOpacity(0.3)),
-              ),
-              child: SelectableText(
-                _btcAddress,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textHigh,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Action Buttons
-            Row(
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            child: Column(
               children: [
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.copy_rounded,
-                    label: 'Copy Address',
-                    onTap: () {
-                      // Mock copy
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Address copied to clipboard')),
-                      );
-                    },
+                const SizedBox(height: 20),
+
+                // Glassmorphic QR Container (REAL QR)
+                _QrContainer(qrData: qrData),
+
+                const SizedBox(height: 48),
+
+                // Address Label
+                Text(
+                  'Your LightningPay Address',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textMed,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.share_rounded,
-                    label: 'Share QR',
-                    onTap: () {},
+                const SizedBox(height: 16),
+
+                // Address Card (USERNAME)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceDark,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: AppColors.border.withOpacity(0.3),
+                    ),
+                  ),
+                  child: SelectableText(
+                    usernameAddress,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textHigh,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.copy_rounded,
+                        label: 'Copy Address',
+                        onTap: () {
+                          Clipboard.setData(
+                            ClipboardData(text: usernameAddress),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Username copied')),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.share_rounded,
+                        label: 'Share QR',
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: qrData));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('QR data copied for sharing'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 48),
+
+                // Security Note
+                GlassCard(
+                  padding: const EdgeInsets.all(16),
+                  color: AppColors.primary.withOpacity(0.03),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Only send Bitcoin (BTC) using this LightningPay username. '
+                          'Sending any other currency may result in permanent loss.',
+                          style: TextStyle(
+                            color: AppColors.textMed,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 48),
-
-            // Security Note
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              color: AppColors.primary.withOpacity(0.03),
-              child: Row(
-                children: [
-                   const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 20),
-                   const SizedBox(width: 12),
-                   Expanded(
-                     child: Text(
-                       'Only send Bitcoin (BTC) to this address. Sending any other currency may result in permanent loss.',
-                       style: TextStyle(color: AppColors.textMed, fontSize: 13, height: 1.4),
-                     ),
-                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
 
 class _QrContainer extends StatelessWidget {
-  final String address;
+  final String qrData;
 
-  const _QrContainer({required this.address});
+  const _QrContainer({required this.qrData});
 
   @override
   Widget build(BuildContext context) {
@@ -134,14 +169,10 @@ class _QrContainer extends StatelessWidget {
             ),
           ],
         ),
-        child: Container(
-          width: 200,
-          height: 200,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(Icons.qr_code_2_rounded, size: 180, color: Colors.black),
+        child: QrImageView(
+          data: qrData,
+          size: 200,
+          backgroundColor: Colors.white,
         ),
       ),
     );
@@ -190,4 +221,3 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
-
