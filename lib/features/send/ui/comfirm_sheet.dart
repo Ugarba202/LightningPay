@@ -1,23 +1,19 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../core/themes/app_colors.dart';
 import '../../../core/themes/widgets/glass_card.dart';
-import 'transaction_result_screen.dart';
-import '../../transaction/data/transaction_storage.dart';
-import '../../transaction/model/transation_item.dart';
 import '../../../core/themes/widgets/transaction_pin_sheet.dart';
+import '../../../core/service/transaction_service.dart';
+
+import 'transaction_result_screen.dart';
 
 class SendConfirmSheet extends StatefulWidget {
   final String? address;
   final String? username;
   final String? amount;
 
-  const SendConfirmSheet({
-    super.key,
-    this.address,
-    this.username,
-    this.amount,
-  });
+  const SendConfirmSheet({super.key, this.address, this.username, this.amount});
 
   @override
   State<SendConfirmSheet> createState() => _SendConfirmSheetState();
@@ -26,64 +22,76 @@ class SendConfirmSheet extends StatefulWidget {
 class _SendConfirmSheetState extends State<SendConfirmSheet> {
   bool _isSending = false;
 
-  Future<Map<String, dynamic>> _simulateSend() async {
-    setState(() => _isSending = true);
-    await Future.delayed(const Duration(seconds: 2));
-    final success = Random().nextDouble() < 0.95; // High success rate for demo
-    final txId = List.generate(24, (_) => Random().nextInt(16).toRadixString(16)).join();
-    setState(() => _isSending = false);
-    return {'success': success, 'txId': txId};
+  void _onSendNow() {
+    TransactionPinSheet.show(context, onVerified: _executeSend);
   }
 
-  void _onSendNow() {
-    TransactionPinSheet.show(
-      context,
-      onVerified: _executeSend,
-    );
+  Future<String> _resolveReceiverUserId() async {
+    if (widget.username == null || widget.username!.isEmpty) {
+      throw Exception('Invalid recipient');
+    }
+
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('username', isEqualTo: widget.username)
+        .limit(1)
+        .get();
+
+    if (query.docs.isEmpty) {
+      throw Exception('Recipient not found');
+    }
+
+    return query.docs.first.id;
   }
 
   void _executeSend() async {
-    final result = await _simulateSend();
-    if (!mounted) return;
-    Navigator.of(context).pop();
+    setState(() => _isSending = true);
 
-    final success = result['success'] as bool;
-    final txId = result['txId'] as String;
-    final double amountVal = double.tryParse(widget.amount ?? '') ?? 0.0;
+    try {
+      final amountVal = double.parse(widget.amount!);
+      final receiverUserId = await _resolveReceiverUserId();
 
-    await TransactionStorage.addTransaction(
-      TransactionItem(
-        title: success
-            ? (widget.username != null && widget.username!.isNotEmpty
-                ? 'Sent to ${widget.username}'
-                : 'Sent')
-            : 'Failed send',
-        date: DateTime.now(),
-        amount: amountVal,
-        currency: 'BTC',
-        type: TransactionType.sent,
-        status: success ? TransactionStatus.completed : TransactionStatus.failed,
-        txId: txId,
-        address: widget.address ?? 'Unknown',
-        username: widget.username,
-        fee: '0.0001 BTC',
-      ),
-    );
+      final txService = TransactionService();
 
-    if (mounted) {
+      await txService.sendBtc(
+        receiverUserId: receiverUserId,
+        amountBtc: amountVal,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TransactionResultScreen(
-            success: success,
-            address: widget.address ?? 'Unknown',
+            success: true,
+            address: widget.address ?? 'Username',
             username: widget.username,
             amount: widget.amount ?? '0.00',
             fee: '0.0001 BTC',
-            txId: txId,
-            message: success ? null : 'Transaction verification failed',
+            txId: 'auto-generated',
           ),
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TransactionResultScreen(
+            success: false,
+            address: widget.address ?? 'Unknown',
+            username: widget.username,
+            amount: widget.amount ?? '0.00',
+            fee: '—',
+            txId: '—',
+            message: e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -101,13 +109,16 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
               height: 250,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(
+                children: const [
+                  SizedBox(
                     width: 60,
                     height: 60,
-                    child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primary),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: AppColors.primary,
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Text(
                     'Broadcasting Transaction...',
                     style: TextStyle(
@@ -116,9 +127,9 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
-                    'Securing your payment on the Bitcoin network',
+                    'Securing your payment',
                     style: TextStyle(color: AppColors.textMed, fontSize: 13),
                   ),
                 ],
@@ -139,7 +150,7 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(
+                const Text(
                   'Review Payment',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -161,7 +172,6 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                
                 GlassCard(
                   padding: const EdgeInsets.all(20),
                   color: Colors.white.withOpacity(0.03),
@@ -169,20 +179,17 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                     children: [
                       _DetailRow(
                         label: 'Recipient',
-                        value: widget.username ??
-                            (widget.address != null
-                                ? (widget.address!.length > 12
-                                    ? '${widget.address!.substring(0, 10)}...'
-                                    : widget.address!)
-                                : '—'),
+                        value: widget.username ?? '—',
                         isPrimary: true,
                       ),
                       const SizedBox(height: 16),
-                      _DetailRow(label: 'Network Fee', value: '0.0001 BTC'),
+                      const _DetailRow(
+                        label: 'Network Fee',
+                        value: '0.0001 BTC',
+                      ),
                     ],
                   ),
                 ),
-                
                 const SizedBox(height: 40),
                 ElevatedButton(
                   onPressed: _onSendNow,
@@ -193,7 +200,10 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     'Cancel Payment',
-                    style: TextStyle(color: AppColors.textLow, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: AppColors.textLow,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -207,14 +217,21 @@ class _DetailRow extends StatelessWidget {
   final String value;
   final bool isPrimary;
 
-  const _DetailRow({required this.label, required this.value, this.isPrimary = false});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.isPrimary = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppColors.textMed, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textMed, fontSize: 13),
+        ),
         Text(
           value,
           style: TextStyle(
@@ -227,4 +244,3 @@ class _DetailRow extends StatelessWidget {
     );
   }
 }
-
