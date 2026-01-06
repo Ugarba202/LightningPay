@@ -45,13 +45,10 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
 
   final ValueNotifier<bool> _showValidationNotifier = ValueNotifier(false);
 
-  late final List<Widget> _wizardSteps;
-
   @override
   void initState() {
     super.initState();
-    _wizardSteps = _buildSteps();
-    _totalSteps = _wizardSteps.length;
+    _totalSteps = 8; // Adjust based on the number of steps
   }
 
   @override
@@ -61,41 +58,45 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
     super.dispose();
   }
 
-  List<Widget> _buildSteps() => [
-    NameStep(
-      showValidationNotifier: _showValidationNotifier,
-      onCompleted: (value) => _updateValidation(value, (val) => name = val),
-    ),
-
-    EmailStep(
-      showValidationNotifier: _showValidationNotifier,
-      onCompleted: (value) => _updateValidation(value, (val) => email = val),
-    ),
-
-    VerifyEmailStep(onVerified: _nextStep),
-
-    CountryStep(
-      showValidationNotifier: _showValidationNotifier,
-      onCompleted: (value) {
-        country = value;
-        setState(() => _isStepValid = value != null);
-      },
-    ),
-
-    PhoneStep(
-      country: supportedCountries.first,
-      onCompleted: (value) => _updateValidation(value, (val) => phone = val),
-    ),
-
-    UsernameStep(
-      showValidationNotifier: _showValidationNotifier,
-      onValidationChanged: (value) =>
-          _updateValidation(value, (val) => username = val),
-    ),
-
-    PinCreateStep(onCompleted: _onPinCreated),
-    const SizedBox(),
-  ];
+  List<Widget> _getSteps() => [
+        NameStep(
+          showValidationNotifier: _showValidationNotifier,
+          onCompleted: (value) => _updateValidation(value, (val) => name = val),
+        ),
+        EmailStep(
+          showValidationNotifier: _showValidationNotifier,
+          onCompleted: (value) =>
+              _updateValidation(value, (val) => email = val),
+        ),
+        VerifyEmailStep(onVerified: _nextStep),
+        CountryStep(
+          showValidationNotifier: _showValidationNotifier,
+          onCompleted: (value) {
+            country = value;
+            setState(() => _isStepValid = value != null);
+          },
+        ),
+        PhoneStep(
+          country: country ?? supportedCountries.first,
+          initialValue: phone,
+          onCompleted: (value) =>
+              _updateValidation(value, (val) => phone = val),
+        ),
+        UsernameStep(
+          showValidationNotifier: _showValidationNotifier,
+          onValidationChanged: (value) =>
+              _updateValidation(value, (val) => username = val),
+        ),
+        PinCreateStep(onCompleted: _onPinCreated),
+        if (loginPin != null)
+          PinConfirmStep(
+            originalPin: loginPin!,
+            onCompleted: _onPinConfirmed,
+            dotColor: Colors.orange,
+          )
+        else
+          const SizedBox(),
+      ];
 
   void _updateValidation(String value, Function(String?) onValid) {
     setState(() {
@@ -177,20 +178,13 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
   }
 
   void _onPinCreated(String pin) {
-    loginPin = pin;
+    setState(() {
+      loginPin = pin;
+      _currentStep++;
+      _isStepValid = false;
+    });
 
-    final confirmIndex = _totalSteps - 1;
-
-    _wizardSteps[confirmIndex] = PinConfirmStep(
-      originalPin: loginPin!,
-      onCompleted: _onPinConfirmed,
-      dotColor: Colors.orange,
-    );
-
-    setState(() => _currentStep = confirmIndex);
-
-    _pageController.animateToPage(
-      confirmIndex,
+    _pageController.nextPage(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
     );
@@ -277,7 +271,7 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
                   child: PageView(
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
-                    children: _wizardSteps,
+                    children: _getSteps(),
                   ),
                 ),
                 if (_currentStep < _totalSteps - 2)

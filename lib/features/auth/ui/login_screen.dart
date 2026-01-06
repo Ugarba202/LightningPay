@@ -5,6 +5,8 @@ import '../../../core/themes/navigation/main_navigation_screen.dart';
 import '../../auth_wizard/ui/widget/pin_layout.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../auth_wizard/ui/auth_wizard_screen.dart';
+import '../../../core/service/auth_service.dart';
+import '../../../core/service/user_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _savedPin;
 
   bool _loading = true;
+  bool _isLoggingIn = false;
 
   @override
   void initState() {
@@ -45,18 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (_savedEmail == null) {
-      // No account exists
-      setState(() => _error = 'No account found. Please create one.');
-      return;
-    }
-
-    if (entered.toLowerCase() != _savedEmail!.toLowerCase()) {
-      setState(() => _error = 'No account found for that email');
-      return;
-    }
-
-    // OK, proceed to PIN step
+    // We proceed even if _savedEmail is null to allow login recovery from Firebase
     setState(() {
       _error = '';
       _step = 1;
@@ -67,22 +59,62 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_pin.length < 6) {
       setState(() => _pin += value);
       if (_pin.length == 6) {
-        // Check PIN
-        if (_savedPin != null && _pin == _savedPin) {
-          // success
+        setState(() {
+          _isLoggingIn = true;
+          _error = '';
+        });
+
+        try {
+          // 1. Try local check first for speed
+          if (_savedEmail != null &&
+              _savedPin != null &&
+              _email.trim().toLowerCase() == _savedEmail!.toLowerCase() &&
+              _pin == _savedPin) {
+            // Local match - quick login
+          } else {
+            // 2. Local check failed or missing, try Firebase
+            final authService = AuthService();
+            final creds = await authService.signInWithEmail(
+              email: _email.trim(),
+              password: _pin,
+            );
+
+            final user = creds.user;
+            if (user != null) {
+              // Restore profile from Firestore
+              final userService = UserService();
+              final profile = await userService.getUserProfile(user.uid);
+              if (profile != null) {
+                // Save back to AuthStorage
+                await AuthStorage.saveCredentials(_email.trim(), _pin);
+                await AuthStorage.saveFullName(profile['fullName'] ?? '');
+                await AuthStorage.saveUsername(profile['username'] ?? '');
+                await AuthStorage.saveCountry(profile['country'] ?? '');
+                await AuthStorage.savePhoneNumber(profile['phone'] ?? '');
+                // Note: We might want to restore other fields too
+              }
+            }
+          }
+
+          // login success
+          if (!mounted) return;
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
           );
-        } else {
-          // incorrect PIN
+        } catch (e) {
+          debugPrint('Login error: $e');
           setState(() {
-            _error = 'Incorrect PIN';
+            _isLoggingIn = false;
+            _error = 'Incorrect email or PIN';
             _pin = '';
           });
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Incorrect PIN')));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Incorrect email or PIN')),
+            );
+          }
         }
       }
     }
@@ -105,7 +137,12 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       body: SafeArea(
-        child: _step == 0 ? _buildEmailStep(textTheme) : _buildPinStep(),
+        child: Stack(
+          children: [
+            _step == 0 ? _buildEmailStep(textTheme) : _buildPinStep(),
+            if (_isLoggingIn) _overlayLoader('Logging in...'),
+          ],
+        ),
       ),
     );
   }
@@ -180,7 +217,9 @@ class _LoginScreenState extends State<LoginScreen> {
             pinLength: _pin.length,
             onKeyPressed: _onKeyPressed,
             onDelete: _onDelete,
-            dotColor: Colors.orange, pin: '',
+            dotColor: Colors.orange,
+            pin: _pin,
+            useDots: true,
           ),
         ),
         if (_error.isNotEmpty)
@@ -208,6 +247,29 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  Widget _overlayLoader(String text) {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.45),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

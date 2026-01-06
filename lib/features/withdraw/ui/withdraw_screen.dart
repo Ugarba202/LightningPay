@@ -3,13 +3,11 @@ import '../../../../core/themes/app_colors.dart';
 import '../../../../core/themes/widgets/glass_card.dart';
 import '../logic/withdraw_logic.dart';
 import '../../convert/ui/convert_screen.dart';
-import '../../../../core/data/wallet_store.dart';
-import '../../transaction/data/transaction_storage.dart';
-import '../../transaction/model/transation_item.dart';
+import '../../../../core/service/wallet_stream_service.dart';
 import '../../../../core/storage/auth_storage.dart';
 import '../../../../core/constant/contry_code.dart';
-import 'package:uuid/uuid.dart';
-import '../../../core/themes/widgets/transaction_pin_sheet.dart';
+
+
 
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
@@ -22,7 +20,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   final _logic = WithdrawLogic();
   final _amountController = TextEditingController();
   final _destinationController = TextEditingController();
-  
+
   String _selectedType = 'To Bank Account';
   final List<String> _types = ['To Bank Account', 'To Another User (P2P)'];
 
@@ -64,48 +62,31 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     }
 
     final balanceError = _logic.checkBalance(_amountController.text);
-    if (balanceError != null) {
-      setState(() => _error = balanceError);
-      return;
-    }
-
-    if (_destinationController.text.isEmpty) {
-      setState(() => _error = "Please enter destination details");
-      return;
-    }
-
-    TransactionPinSheet.show(
-      context,
-      onVerified: _executeWithdraw,
-    );
+    setState(() async => _error = await balanceError);
+    return;
+  
   }
 
-  void _executeWithdraw() async {
+  void executeWithdraw() async {
     setState(() => _isLoading = true);
 
-    await _logic.processWithdraw(
-      amount: _amountController.text,
-      type: _selectedType,
-      destination: _destinationController.text,
-    );
-
-    // Record Transaction
-    await TransactionStorage.addTransaction(TransactionItem(
-      title: 'Withdrawal',
-      date: DateTime.now(),
-      amount: double.tryParse(_amountController.text) ?? 0,
-      currency: _localCurrency,
-      type: TransactionType.withdrawal,
-      status: TransactionStatus.completed,
-      txId: const Uuid().v4(),
-      address: _destinationController.text,
-      fee: '1.50 $_localCurrency',
-      reason: _selectedType,
-    ));
+    try {
+      await _logic.processWithdraw(
+        amount: _amountController.text,
+        type: _selectedType,
+        destination: _destinationController.text,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
 
     if (!mounted) return;
     setState(() => _isLoading = false);
-    
+
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Withdraw Successful! Balance Updated.')),
@@ -126,12 +107,16 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Balance Info & Redirect
-            ValueListenableBuilder<double>(
-              valueListenable: WalletStore().balanceLocal,
-              builder: (context, localBalance, _) {
-                final hasBTC = WalletStore().balanceBTC.value > 0;
-                
-                if (localBalance <= 0 && hasBTC) {
+            StreamBuilder<Map<String, dynamic>>(
+              stream: WalletStreamService().walletStream(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const SizedBox.shrink();
+
+                final wallet = snapshot.data!;
+                final localBalance = (wallet['localBalance'] ?? 0.0).toDouble();
+                final btcBalance = (wallet['btcBalance'] ?? 0.0).toDouble();
+
+                if (localBalance <= 0 && btcBalance > 0) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 24),
                     child: GlassCard(
@@ -224,7 +209,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               child: Column(
                 children: [
                   _SummaryRow(
-                    label: 'Processing Time', 
+                    label: 'Processing Time',
                     value: _selectedType == 'To Bank Account' ? '1-2 Business Days' : 'Instant',
                   ),
                   const SizedBox(height: 12),
@@ -249,7 +234,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error.withOpacity(0.8),
               ),
-              child: _isLoading 
+              child: _isLoading
                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
                 : const Text('Confirm Withdrawal'),
             ),

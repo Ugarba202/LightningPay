@@ -1,88 +1,70 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
-import '../../../core/service/user_respiratory.dart';
 import '../../../core/themes/app_colors.dart';
-import '../../../core/service/rate_service.dart';
-
-import '../../../core/models/user_model.dart';
+import '../../../core/service/wallet_stream_service.dart';
+import '../../../core/themes/widgets/glass_card.dart';
 
 class BalanceCard extends StatelessWidget {
   const BalanceCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final userRepo = UserRepository();
+    final walletStream = WalletStreamService();
 
-    return StreamBuilder<AppUser>(
-      stream: userRepo.getCurrentUser(),
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: walletStream.walletStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return _loadingCard();
         }
 
-        final user = snapshot.data!;
-        final localAmount = RateService.btcToLocal(
-          btc: user.btcBalance,
-          currency: user.currency,
-        );
+        if (!snapshot.hasData) {
+          return _errorCard('Wallet not found');
+        }
 
-        return Container(
+        final wallet = snapshot.data!;
+        final btc = wallet['btcBalance'] ?? 0.0;
+        final local = wallet['localBalance'] ?? 0.0;
+        final currency = wallet['currency'] ?? '—';
+
+        final btcDisplay = btc % 1 == 0 ? btc.toInt().toString() : btc.toString();
+        final localDisplay = local.toString().replaceAllMapped(
+              RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+              (Match m) => '${m[1]},',
+            );
+
+        return GlassCard(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primary.withOpacity(0.9),
-                AppColors.primary.withOpacity(0.7),
-              ],
-            ),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Wallet Balance',
-                style: TextStyle(color: Colors.white70),
+              Text(
+                'Total Balance',
+                style: TextStyle(
+                  color: AppColors.textMed,
+                  fontSize: 14,
+                ),
               ),
-
               const SizedBox(height: 12),
 
-              // BTC Balance
+              /// BTC Balance
               Text(
-                '${user.btcBalance.toStringAsFixed(6)} BTC',
+                '$btcDisplay BTC',
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
+                  color: AppColors.textHigh,
                 ),
               ),
 
               const SizedBox(height: 6),
 
-              // Local Currency (NGN, PKR, etc)
+              /// Local Currency Balance
               Text(
-                '${localAmount.toStringAsFixed(2)} ${user.currency}',
-                style: const TextStyle(
-                  color: Colors.white70,
+                '$localDisplay $currency',
+                style: TextStyle(
                   fontSize: 16,
+                  color: AppColors.textMed,
                 ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Row(
-                children: [
-                  _CopyChip(
-                    label: '@${user.username}',
-                    icon: Icons.alternate_email,
-                  ),
-                  const SizedBox(width: 12),
-                  _CopyChip(
-                    label: user.accountNumber,
-                    icon: Icons.account_balance,
-                  ),
-                ],
               ),
             ],
           ),
@@ -92,53 +74,23 @@ class BalanceCard extends StatelessWidget {
   }
 
   Widget _loadingCard() {
-    return Container(
-      height: 160,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(24),
+    return GlassCard(
+      padding: const EdgeInsets.all(24),
+      child: const SizedBox(
+        height: 80,
+        child: Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
       ),
-      child: const Center(child: CircularProgressIndicator()),
     );
   }
-}
 
-class _CopyChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-
-  const _CopyChip({
-    required this.label,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Clipboard.setData(ClipboardData(text: label));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$label copied')),
-        );
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: Colors.white),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
+  Widget _errorCard(String message) {
+    return GlassCard(
+      padding: const EdgeInsets.all(24),
+      child: Text(
+        message,
+        style: const TextStyle(color: Colors.red),
       ),
     );
   }

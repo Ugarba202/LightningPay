@@ -1,12 +1,16 @@
+// ignore_for_file: unused_local_variable
+
 import 'package:flutter/material.dart';
 import 'package:lighting_pay/features/send/ui/send_amount_screen.dart';
 
 import '../../../core/themes/app_colors.dart';
 import '../../receive/ui/receive_screen.dart';
 import '../../deposit/ui/deposit_screen.dart';
+import '../../transaction/ui/transaction_history_screen.dart';
 import '../../withdraw/ui/withdraw_screen.dart';
 import '../../convert/ui/convert_screen.dart';
-import '../../transaction/ui/transaction_history_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/service/transaction_service.dart';
 import 'balance_card.dart';
 
 class WalletDashboardScreen extends StatelessWidget {
@@ -148,27 +152,96 @@ class WalletDashboardScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       
                       // Recent Transactions
-                      _TransactionTile(
-                        title: 'Apple Signature',
-                        subtitle: 'Sent • Today, 10:45 AM',
-                        amount: '-0.00045 BTC',
-                        icon: Icons.apple_rounded,
-                      ),
-                      const SizedBox(height: 12),
-                      _TransactionTile(
-                        title: 'Miners Reward',
-                        subtitle: 'Received • Yesterday, 2:15 PM',
-                        amount: '+0.0028 BTC',
-                        icon: Icons.currency_bitcoin_rounded,
-                        isPositive: true,
-                      ),
-                      const SizedBox(height: 12),
-                      _TransactionTile(
-                        title: 'Binance Exchange',
-                        subtitle: 'Received • Dec 24, 8:12 PM',
-                        amount: '+0.0150 BTC',
-                        icon: Icons.swap_horizontal_circle_rounded,
-                        isPositive: true,
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: TransactionService().transactionsStream(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+
+                          final docs = snapshot.data?.docs ?? [];
+                          if (docs.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: Center(
+                                child: Text(
+                                  'No recent activity',
+                                  style: TextStyle(color: AppColors.textMed),
+                                ),
+                              ),
+                            );
+                          }
+
+                          final recentDocs = docs.take(3).toList();
+
+                          return Column(
+                            children: recentDocs.map((doc) {
+                              final data = doc.data();
+                              final type = data['type'] ?? '';
+                              final amountBtc = (data['amountBtc'] ?? 0).toDouble();
+                              final amountLocal = (data['amountLocal'] ?? 0).toDouble();
+                              final currency = data['currency'] ?? '';
+                              final note = data['note'];
+                              final createdAt = data['createdAt'] as Timestamp?;
+
+                              String title = 'Transaction';
+                              IconData icon = Icons.help_outline_rounded;
+                              Color iconColor = AppColors.textMed;
+                              String amountStr = '';
+                              bool isPositive = false;
+
+                              switch (type) {
+                                case 'send':
+                                  title = 'Sent BTC';
+                                  icon = Icons.call_made_rounded;
+                                  iconColor = AppColors.error;
+                                  amountStr = '-${amountBtc.toStringAsFixed(6)} BTC';
+                                  isPositive = false;
+                                  break;
+                                case 'receive':
+                                  title = 'Received BTC';
+                                  icon = Icons.call_received_rounded;
+                                  iconColor = AppColors.success;
+                                  amountStr = '+${amountBtc.toStringAsFixed(6)} BTC';
+                                  isPositive = true;
+                                  break;
+                                case 'convert':
+                                  title = 'Converted BTC';
+                                  icon = Icons.swap_horiz_rounded;
+                                  iconColor = AppColors.primary;
+                                  amountStr = '${amountBtc.toStringAsFixed(6)} BTC';
+                                  isPositive = false;
+                                  break;
+                                case 'deposit':
+                                  title = 'Deposited Funds';
+                                  icon = Icons.add_circle_outline_rounded;
+                                  iconColor = AppColors.success;
+                                  amountStr = '+$amountLocal $currency';
+                                  isPositive = true;
+                                  break;
+                                case 'withdraw':
+                                  title = 'Withdrew Funds';
+                                  icon = Icons.remove_circle_outline_rounded;
+                                  iconColor = AppColors.error;
+                                  amountStr = '-$amountLocal $currency';
+                                  isPositive = false;
+                                  break;
+                              }
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _TransactionTile(
+                                  title: title,
+                                  subtitle: note ?? 'Bitcoin transaction',
+                                  amount: amountStr,
+                                  icon: icon,
+                                  iconColor: iconColor,
+                                  isPositive: isPositive,
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
                       ),
                     ]),
                   ),
@@ -239,6 +312,7 @@ class _TransactionTile extends StatelessWidget {
   final String subtitle;
   final String amount;
   final IconData icon;
+  final Color? iconColor;
   final bool isPositive;
 
   const _TransactionTile({
@@ -246,6 +320,7 @@ class _TransactionTile extends StatelessWidget {
     required this.subtitle,
     required this.amount,
     required this.icon,
+    this.iconColor,
     this.isPositive = false,
   });
 
@@ -266,7 +341,7 @@ class _TransactionTile extends StatelessWidget {
               color: Colors.white.withOpacity(0.03),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white70, size: 24),
+            child: Icon(icon, color: iconColor ?? Colors.white70, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(

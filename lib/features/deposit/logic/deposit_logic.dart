@@ -1,7 +1,10 @@
-import '../../../core/data/wallet_store.dart';
+import '../../../core/service/wallet_service.dart';
+import '../../../core/service/transaction_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DepositLogic {
-  final WalletStore _walletStore = WalletStore();
+  final WalletService _walletService = WalletService();
+  final TransactionService _txService = TransactionService();
 
   bool validateAmount(String amount) {
     final value = double.tryParse(amount);
@@ -18,9 +21,23 @@ class DepositLogic {
 
     final value = double.tryParse(amount);
     if (value != null && value > 0) {
-      // User clarified: This only funds the local currency balance.
-      // BTC remains unchanged and no conversion occurs.
-      _walletStore.depositLocal(value);
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Not authenticated');
+
+      // 1️⃣ Update Firestore balance
+      await _walletService.updateBalancesSafely(
+        btcDelta: 0.0,
+        localDelta: value,
+      );
+
+      // 2️⃣ Record transaction
+      await _txService.createTransaction(
+        senderId: 'external',
+        receiverId: user.uid,
+        amountBtc: 0.0,
+        type: 'deposit',
+        note: purpose.isNotEmpty ? purpose : 'Deposited funds',
+      );
     }
   }
 }

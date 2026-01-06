@@ -13,7 +13,12 @@ class SendConfirmSheet extends StatefulWidget {
   final String? username;
   final String? amount;
 
-  const SendConfirmSheet({super.key, this.address, this.username, this.amount});
+  const SendConfirmSheet({
+    super.key,
+    this.address,
+    this.username,
+    this.amount, String? note,
+  });
 
   @override
   State<SendConfirmSheet> createState() => _SendConfirmSheetState();
@@ -23,17 +28,27 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
   bool _isSending = false;
 
   void _onSendNow() {
-    TransactionPinSheet.show(context, onVerified: _executeSend);
+    TransactionPinSheet.show(
+      context,
+      onVerified: _executeSend,
+    );
   }
 
+  /// 🔎 Resolve Firestore userId from @username
   Future<String> _resolveReceiverUserId() async {
     if (widget.username == null || widget.username!.isEmpty) {
       throw Exception('Invalid recipient');
     }
 
+    // IMPORTANT FIX: strip @
+    final cleanUsername =
+        widget.username!.startsWith('@')
+            ? widget.username!.substring(1)
+            : widget.username!;
+
     final query = await FirebaseFirestore.instance
         .collection('users')
-        .where('username', isEqualTo: widget.username)
+        .where('username', isEqualTo: cleanUsername)
         .limit(1)
         .get();
 
@@ -44,11 +59,16 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
     return query.docs.first.id;
   }
 
-  void _executeSend() async {
+  Future<void> _executeSend() async {
     setState(() => _isSending = true);
 
     try {
-      final amountVal = double.parse(widget.amount!);
+      // ✅ SAFE amount parsing
+      final amountVal = double.tryParse(widget.amount ?? '');
+      if (amountVal == null || amountVal <= 0) {
+        throw Exception('Invalid amount');
+      }
+
       final receiverUserId = await _resolveReceiverUserId();
 
       final txService = TransactionService();
@@ -59,8 +79,11 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
       );
 
       if (!mounted) return;
+
+      // Close bottom sheet FIRST
       Navigator.of(context).pop();
 
+      // Then navigate
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TransactionResultScreen(
@@ -73,8 +96,12 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
           ),
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('SEND ERROR: $e');
+      debugPrintStack(stackTrace: stack);
+
       if (!mounted) return;
+
       Navigator.of(context).pop();
 
       Navigator.of(context).push(
@@ -130,7 +157,10 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                   SizedBox(height: 8),
                   Text(
                     'Securing your payment',
-                    style: TextStyle(color: AppColors.textMed, fontSize: 13),
+                    style: TextStyle(
+                      color: AppColors.textMed,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
@@ -230,7 +260,10 @@ class _DetailRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: AppColors.textMed, fontSize: 13),
+          style: const TextStyle(
+            color: AppColors.textMed,
+            fontSize: 13,
+          ),
         ),
         Text(
           value,

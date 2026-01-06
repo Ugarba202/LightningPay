@@ -16,6 +16,7 @@ class SendAmountScreen extends StatefulWidget {
 class _SendAmountScreenState extends State<SendAmountScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
 
   final _lookupService = UserLookupService();
 
@@ -41,31 +42,37 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   void dispose() {
     _addressController.dispose();
     _amountController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
+  // ----------------------------------
+  // Resolve username to AppUser
+  // ----------------------------------
   Future<void> _resolveRecipient(String input) async {
-    setState(() {
-      _error = null;
-      _recipient = null;
-      _isResolving = true;
-    });
-
     final value = input.trim();
 
     if (!value.startsWith('@')) {
       setState(() {
         _error = 'Use a @username';
-        _isResolving = false;
+        _recipient = null;
       });
       return;
     }
 
+    setState(() {
+      _isResolving = true;
+      _error = null;
+    });
+
     final user = await _lookupService.findByUsername(value);
+
+    if (!mounted) return;
 
     if (user == null) {
       setState(() {
         _error = 'User not found';
+        _recipient = null;
         _isResolving = false;
       });
       return;
@@ -77,17 +84,25 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
     });
   }
 
+  // ----------------------------------
+  // Scan QR and normalize username
+  // ----------------------------------
   Future<void> _scanQr() async {
-    final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const _QrScannerScreen()),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const _QrScannerScreen()));
 
     if (result != null && result.isNotEmpty) {
-      _addressController.text = result;
-      await _resolveRecipient(result);
+      final normalized = result.startsWith('@') ? result : '@$result';
+
+      _addressController.text = normalized;
+      await _resolveRecipient(normalized);
     }
   }
 
+  // ----------------------------------
+  // Show confirmation sheet
+  // ----------------------------------
   void _showConfirmSheet() {
     showModalBottomSheet(
       context: context,
@@ -97,6 +112,9 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
         username: _recipient!.username,
         address: null,
         amount: _amountController.text.trim(),
+        note: _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim(),
       ),
     );
   }
@@ -111,6 +129,7 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ---------------- Recipient ----------------
             _InputSection(
               label: 'Recipient',
               child: TextField(
@@ -132,16 +151,23 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
                           onPressed: _scanQr,
                         ),
                 ),
-                onSubmitted: _resolveRecipient,
+                onChanged: (value) {
+                  if (value.startsWith('@') && value.length > 2) {
+                    _resolveRecipient(value);
+                  }
+                },
               ),
             ),
 
+            // ---------------- Amount ----------------
             _InputSection(
               label: 'Amount',
               child: TextField(
                 controller: _amountController,
                 enabled: isAmountEnabled,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -158,7 +184,20 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
               ),
             ),
 
-            const SizedBox(height: 40),
+            // ---------------- Description / Note ----------------
+            _InputSection(
+              label: 'Description (optional)',
+              child: TextField(
+                controller: _noteController,
+                maxLines: 2,
+                style: const TextStyle(color: AppColors.textHigh),
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Rent, Lunch, Refund',
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
 
             ElevatedButton(
               onPressed: canContinue ? _showConfirmSheet : null,
@@ -171,14 +210,15 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   }
 }
 
+// ===================================================
+// UI helpers
+// ===================================================
+
 class _InputSection extends StatelessWidget {
   final String label;
   final Widget child;
 
-  const _InputSection({
-    required this.label,
-    required this.child,
-  });
+  const _InputSection({required this.label, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +249,10 @@ class _InputSection extends StatelessWidget {
   }
 }
 
+// ===================================================
+// QR Scanner
+// ===================================================
+
 class _QrScannerScreen extends StatelessWidget {
   const _QrScannerScreen();
 
@@ -218,10 +262,10 @@ class _QrScannerScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Scan QR')),
       body: MobileScanner(
         onDetect: (capture) {
-          final List<Barcode> barcodes = capture.barcodes;
-          for (final barcode in barcodes) {
-            if (barcode.rawValue != null) {
-              Navigator.pop(context, barcode.rawValue);
+          for (final barcode in capture.barcodes) {
+            final value = barcode.rawValue;
+            if (value != null && value.isNotEmpty) {
+              Navigator.pop(context, value);
               break;
             }
           }

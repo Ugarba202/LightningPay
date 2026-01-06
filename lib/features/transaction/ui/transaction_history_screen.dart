@@ -1,192 +1,229 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/service/transaction_service.dart';
 import '../../../core/themes/app_colors.dart';
 
-import '../data/transaction_storage.dart';
-import '../model/transation_item.dart';
-import 'transaction_receipt_screen.dart';
-import 'transaction_tile.dart';
-
-class TransactionHistoryScreen extends StatefulWidget {
+class TransactionHistoryScreen extends StatelessWidget {
   const TransactionHistoryScreen({super.key});
 
   @override
-  State<TransactionHistoryScreen> createState() =>
-      _TransactionHistoryScreenState();
+  Widget build(BuildContext context) {
+    final txService = TransactionService();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Transactions'),
+        elevation: 0,
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: txService.transactionsStream(), // ✅ FIXED HERE
+        builder: (context, snapshot) {
+          // 🔄 Loading
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          // ❌ Error
+          if (snapshot.hasError) {
+            debugPrint('Transaction Stream Error: ${snapshot.error}');
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        color: Colors.redAccent, size: 48),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Failed to load transactions',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: AppColors.textHigh,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This usually happens if a Firestore index is missing. Check your console for a setup link.\n\nError: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.textMed),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text(
+                'No transactions yet',
+                style: TextStyle(color: AppColors.textMed),
+              ),
+            );
+          }
+
+          return ListView.separated(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final data = docs[index].data();
+
+              final type = data['type'] ?? '';
+              final amountBtc = (data['amountBtc'] ?? 0).toDouble();
+              final amountLocal = (data['amountLocal'] ?? 0).toDouble();
+              final currency = data['currency'] ?? '';
+              final createdAt = data['createdAt'] as Timestamp?;
+              final note = data['note'];
+
+              String title = 'Transaction';
+              IconData icon = Icons.help_outline_rounded;
+              Color iconColor = AppColors.textMed;
+              String amountStr = '';
+              bool isPositive = false;
+
+              switch (type) {
+                case 'send':
+                  title = 'Sent BTC';
+                  icon = Icons.call_made_rounded;
+                  iconColor = AppColors.error;
+                  amountStr = '-${amountBtc.toStringAsFixed(6)} BTC';
+                  isPositive = false;
+                  break;
+                case 'receive':
+                  title = 'Received BTC';
+                  icon = Icons.call_received_rounded;
+                  iconColor = AppColors.success;
+                  amountStr = '+${amountBtc.toStringAsFixed(6)} BTC';
+                  isPositive = true;
+                  break;
+                case 'convert':
+                  title = 'Converted BTC';
+                  icon = Icons.swap_horiz_rounded;
+                  iconColor = AppColors.primary;
+                  amountStr = '${amountBtc.toStringAsFixed(6)} BTC';
+                  isPositive = false;
+                  break;
+                case 'deposit':
+                  title = 'Deposited Funds';
+                  icon = Icons.add_circle_outline_rounded;
+                  iconColor = AppColors.success;
+                  amountStr = '+$amountLocal $currency';
+                  isPositive = true;
+                  break;
+                case 'withdraw':
+                  title = 'Withdrew Funds';
+                  icon = Icons.remove_circle_outline_rounded;
+                  iconColor = AppColors.error;
+                  amountStr = '-$amountLocal $currency';
+                  isPositive = false;
+                  break;
+              }
+
+              return _TransactionTile(
+                title: title,
+                subtitle: note ?? 'Bitcoin transaction',
+                amount: amountStr,
+                isPositive: isPositive,
+                icon: icon,
+                iconColor: iconColor,
+                date: createdAt?.toDate(),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
-  List<TransactionItem> _transactions = [];
-  TransactionType _filter = TransactionType.sent;
-  bool _loading = true;
+class _TransactionTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String amount;
+  final bool isPositive;
+  final IconData icon;
+  final Color iconColor;
+  final DateTime? date;
 
-  Future<void> _load() async {
-    final items = await TransactionStorage.getTransactions();
-    if (!mounted) return;
-    setState(() {
-      _transactions = items;
-      _loading = false;
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  const _TransactionTile({
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.isPositive,
+    required this.icon,
+    required this.iconColor,
+    this.date,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _transactions.where((t) {
-      if (_filter == TransactionType.lightning) return true; // Treat 'lightning' as 'All' for simplicity or add an explicit 'All'
-      return t.type == _filter;
-    }).toList();
-
-    return Scaffold(
-      backgroundColor: AppColors.bgDark,
-      appBar: AppBar(
-        title: const Text('Transaction History'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border.withOpacity(0.3)),
       ),
-      body: Column(
+      child: Row(
         children: [
-          // Filter Selector
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            physics: const BouncingScrollPhysics(),
-            child: Row(
+          Icon(
+            icon,
+            color: iconColor,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _FilterTab(
-                  label: 'All',
-                  isSelected: _filter == TransactionType.lightning,
-                  onTap: () => setState(() => _filter = TransactionType.lightning),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textHigh,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _FilterTab(
-                  label: 'Sent',
-                  isSelected: _filter == TransactionType.sent,
-                  onTap: () => setState(() => _filter = TransactionType.sent),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textMed,
+                    fontSize: 13,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _FilterTab(
-                  label: 'Received',
-                  isSelected: _filter == TransactionType.received,
-                  onTap: () => setState(() => _filter = TransactionType.received),
-                ),
-                const SizedBox(width: 8),
-                _FilterTab(
-                  label: 'Deposits',
-                  isSelected: _filter == TransactionType.deposit,
-                  onTap: () => setState(() => _filter = TransactionType.deposit),
-                ),
-                const SizedBox(width: 8),
-                _FilterTab(
-                  label: 'Withdrawals',
-                  isSelected: _filter == TransactionType.withdrawal,
-                  onTap: () => setState(() => _filter = TransactionType.withdrawal),
-                ),
-                const SizedBox(width: 8),
-                _FilterTab(
-                  label: 'Conversions',
-                  isSelected: _filter == TransactionType.conversion,
-                  onTap: () => setState(() => _filter = TransactionType.conversion),
-                ),
+                if (date != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${date!.day}/${date!.month}/${date!.year}',
+                    style: const TextStyle(
+                      color: AppColors.textLow,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : filtered.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.history_rounded, size: 64, color: AppColors.textLow),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No transactions found',
-                              style: TextStyle(color: AppColors.textMed, fontSize: 16),
-                            ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        color: AppColors.primary,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final tx = filtered[index];
-                            return InkWell(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      TransactionReceiptScreen(transaction: tx),
-                                ),
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                              child: TransactionTile(transaction: tx),
-                            );
-                          },
-                        ),
-                      ),
+          Text(
+            amount,
+            style: TextStyle(
+              color:
+                  isPositive ? AppColors.success : AppColors.textHigh,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
           ),
         ],
       ),
     );
   }
 }
-
-class _FilterTab extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _FilterTab({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 20),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : [],
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: isSelected ? Colors.white : AppColors.textMed,
-              ),
-            ),
-          ),
-      ),
-    );
-  }
-}
-

@@ -1,14 +1,17 @@
 import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import 'currency_mapper.dart';
+import 'rate_service.dart';
+
 
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // ===============================
-  // PUBLIC METHOD: CREATE USER
+  // CREATE USER PROFILE
   // ===============================
   Future<void> createUserProfile({
     required String fullName,
@@ -24,16 +27,20 @@ class UserService {
     }
 
     final uid = user.uid;
-
-    // Prevent duplicate creation
     final docRef = _firestore.collection('users').doc(uid);
+
     final snapshot = await docRef.get();
+    if (snapshot.exists) return;
 
-    if (snapshot.exists) {
-      return; // user already exists
-    }
-
+    final currency = CurrencyMapper.fromCountry(country);
     final accountNumber = _generateAccountNumber();
+
+    final rateService = RateService();
+    const initialBtc = 100.0;
+    final convertedLocal = rateService.btcToLocal(
+      btcAmount: initialBtc,
+      currency: currency,
+    );
 
     await docRef.set({
       'uid': uid,
@@ -42,30 +49,37 @@ class UserService {
       'email': email,
       'phone': phone,
       'country': country,
+      'currency': currency,
       'accountNumber': accountNumber,
       'emailVerified': user.emailVerified,
       'createdAt': FieldValue.serverTimestamp(),
       'wallet': {
-        'btcBalance': 0.0025, // mock BTC
-        'localBalance': 100.0, // mock USD
-        'currency': 'USD',
+        'btcBalance': initialBtc,
+        'localBalance': convertedLocal,
+        'currency': currency,
         'address': _generateMockBtcAddress(),
       },
     });
   }
 
   // ===============================
-  // ACCOUNT NUMBER GENERATOR
+  // ACCOUNT NUMBER
   // ===============================
   String _generateAccountNumber() {
     final random = Random();
-    final part1 = random.nextInt(9000) + 1000;
-    final part2 = random.nextInt(9000) + 1000;
-    return 'LP-$part1-$part2';
+    return 'LP-${random.nextInt(9000) + 1000}-${random.nextInt(9000) + 1000}';
   }
 
   // ===============================
-  // MOCK BTC ADDRESS (LEARNING)
+  // GET USER PROFILE
+  // ===============================
+  Future<Map<String, dynamic>?> getUserProfile(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    return doc.data();
+  }
+
+  // ===============================
+  // MOCK BTC ADDRESS
   // ===============================
   String _generateMockBtcAddress() {
     return 'bc1q${Random().nextInt(999999999)}mock';

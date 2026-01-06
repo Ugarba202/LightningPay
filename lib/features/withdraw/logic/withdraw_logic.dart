@@ -1,25 +1,30 @@
-import '../../../core/data/wallet_store.dart';
+import '../../../core/service/wallet_service.dart';
+import '../../../core/service/transaction_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class WithdrawLogic {
-  final WalletStore _walletStore = WalletStore();
+  final WalletService _walletService = WalletService();
+  final TransactionService _txService = TransactionService();
 
   bool validateAmount(String amount) {
     final value = double.tryParse(amount);
     return value != null && value > 0;
   }
 
-  String? checkBalance(String amount) {
+  Future<String?> checkBalance(String amount) async {
     final value = double.tryParse(amount);
     if (value == null) return "Invalid amount";
-    if (_walletStore.balanceLocal.value < value) {
-      return "Insufficient local balance";
-    }
-    return null;
-  }
 
-  bool needsConversion() {
-    // If local balance is 0 but BTC is not, suggest conversion
-    return _walletStore.balanceLocal.value <= 0 && _walletStore.balanceBTC.value > 0;
+    try {
+      final wallet = await _walletService.getMyWallet();
+      final localBalance = (wallet['localBalance'] ?? 0.0).toDouble();
+      if (localBalance < value) {
+        return "Insufficient local balance";
+      }
+      return null;
+    } catch (e) {
+      return "Could not verify balance";
+    }
   }
 
   Future<void> processWithdraw({
@@ -27,12 +32,25 @@ class WithdrawLogic {
     required String type,
     required String destination,
   }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('Not authenticated');
 
     final value = double.tryParse(amount);
-    if (value != null && _walletStore.balanceLocal.value >= value) {
-      _walletStore.balanceLocal.value -= value;
-    }
+    if (value == null || value <= 0) throw Exception('Invalid amount');
+
+    // 1️⃣ Update Firestore balance (updateBalancesSafely handles sufficiency check)
+    await _walletService.updateBalancesSafely(
+      btcDelta: 0.0,
+      localDelta: -value,
+    );
+
+    // 2️⃣ Record transaction
+    await _txService.createTransaction(
+      senderId: user.uid,
+      receiverId: 'external',
+      amountBtc: 0.0,
+      type: 'withdraw',
+      note: 'Withdraw to $destination ($type)',
+    );
   }
 }
