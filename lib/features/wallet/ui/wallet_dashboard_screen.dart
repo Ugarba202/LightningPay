@@ -46,9 +46,9 @@ class WalletDashboardScreen extends StatelessWidget {
                   title: Text(
                     'Wallet',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontSize: 22,
-                          letterSpacing: 0.5,
-                        ),
+                      fontSize: 22,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                   actions: [
                     Padding(
@@ -73,7 +73,7 @@ class WalletDashboardScreen extends StatelessWidget {
                     delegate: SliverChildListDelegate([
                       const BalanceCard(),
                       const SizedBox(height: 40),
-                      
+
                       // Action Buttons Grid
                       Wrap(
                         alignment: WrapAlignment.spaceBetween,
@@ -85,7 +85,9 @@ class WalletDashboardScreen extends StatelessWidget {
                             label: 'Send',
                             onTap: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const SendAmountScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const SendAmountScreen(),
+                              ),
                             ),
                           ),
                           _ActionButton(
@@ -93,7 +95,9 @@ class WalletDashboardScreen extends StatelessWidget {
                             label: 'Receive',
                             onTap: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const ReceiveScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const ReceiveScreen(),
+                              ),
                             ),
                           ),
                           _ActionButton(
@@ -101,7 +105,9 @@ class WalletDashboardScreen extends StatelessWidget {
                             label: 'Deposit',
                             onTap: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const DepositScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const DepositScreen(),
+                              ),
                             ),
                           ),
                           _ActionButton(
@@ -109,7 +115,9 @@ class WalletDashboardScreen extends StatelessWidget {
                             label: 'Withdraw',
                             onTap: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const WithdrawScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const WithdrawScreen(),
+                              ),
                             ),
                           ),
                           _ActionButton(
@@ -117,30 +125,34 @@ class WalletDashboardScreen extends StatelessWidget {
                             label: 'Convert',
                             onTap: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const ConvertScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const ConvertScreen(),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 48),
-                      
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Activity',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                           TextButton(
                             onPressed: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const TransactionHistoryScreen(),
+                                  builder: (_) =>
+                                      const TransactionHistoryScreen(),
                                 ),
                               );
                             },
@@ -148,15 +160,18 @@ class WalletDashboardScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Recent Transactions
                       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                         stream: TransactionService().transactionsStream(),
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
                           }
 
                           final docs = snapshot.data?.docs ?? [];
@@ -178,8 +193,10 @@ class WalletDashboardScreen extends StatelessWidget {
                             children: recentDocs.map((doc) {
                               final data = doc.data();
                               final type = data['type'] ?? '';
-                              final amountBtc = (data['amountBtc'] ?? 0).toDouble();
-                              final amountLocal = (data['amountLocal'] ?? 0).toDouble();
+                              final amountBtc = (data['amountBtc'] ?? 0)
+                                  .toDouble();
+                              final amountLocal = (data['amountLocal'] ?? 0)
+                                  .toDouble();
                               final currency = data['currency'] ?? '';
                               final note = data['note'];
                               final createdAt = data['createdAt'] as Timestamp?;
@@ -195,21 +212,24 @@ class WalletDashboardScreen extends StatelessWidget {
                                   title = 'Sent BTC';
                                   icon = Icons.call_made_rounded;
                                   iconColor = AppColors.error;
-                                  amountStr = '-${amountBtc.toStringAsFixed(6)} BTC';
+                                  amountStr =
+                                      '-${amountBtc.toStringAsFixed(6)} BTC';
                                   isPositive = false;
                                   break;
                                 case 'receive':
                                   title = 'Received BTC';
                                   icon = Icons.call_received_rounded;
                                   iconColor = AppColors.success;
-                                  amountStr = '+${amountBtc.toStringAsFixed(6)} BTC';
+                                  amountStr =
+                                      '+${amountBtc.toStringAsFixed(6)} BTC';
                                   isPositive = true;
                                   break;
                                 case 'convert':
                                   title = 'Converted BTC';
                                   icon = Icons.swap_horiz_rounded;
                                   iconColor = AppColors.primary;
-                                  amountStr = '${amountBtc.toStringAsFixed(6)} BTC';
+                                  amountStr =
+                                      '${amountBtc.toStringAsFixed(6)} BTC';
                                   isPositive = false;
                                   break;
                                 case 'deposit':
@@ -279,9 +299,7 @@ class _ActionButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceDark,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.border.withOpacity(0.5),
-              ),
+              border: Border.all(color: AppColors.border.withOpacity(0.5)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
@@ -380,4 +398,3 @@ class _TransactionTile extends StatelessWidget {
     );
   }
 }
-

@@ -7,8 +7,6 @@ import '../../../../core/service/wallet_stream_service.dart';
 import '../../../../core/storage/auth_storage.dart';
 import '../../../../core/constant/contry_code.dart';
 
-
-
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
 
@@ -64,7 +62,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     final balanceError = _logic.checkBalance(_amountController.text);
     setState(() async => _error = await balanceError);
     return;
-  
   }
 
   void executeWithdraw() async {
@@ -96,10 +93,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Withdraw Funds'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Withdraw Funds'), elevation: 0),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(24),
@@ -124,7 +118,10 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       color: AppColors.primary.withOpacity(0.1),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline_rounded, color: AppColors.primary),
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.primary,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -132,15 +129,29 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                               children: [
                                 const Text(
                                   'Only local currency can be withdrawn.',
-                                  style: TextStyle(color: AppColors.textHigh, fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: TextStyle(
+                                    color: AppColors.textHigh,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const ConvertScreen()),
+                                    MaterialPageRoute(
+                                      builder: (_) => const ConvertScreen(),
+                                    ),
                                   ),
-                                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                                  child: Text('Convert BTC to $_localCurrency first', style: const TextStyle(color: AppColors.primary)),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                  ),
+                                  child: Text(
+                                    'Convert BTC to $_localCurrency first',
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -162,10 +173,17 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     value: _selectedType,
                     dropdownColor: AppColors.surfaceDark,
                     isExpanded: true,
-                    items: _types.map((t) => DropdownMenuItem(
-                      value: t,
-                      child: Text(t, style: const TextStyle(color: AppColors.textHigh)),
-                    )).toList(),
+                    items: _types
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(
+                              t,
+                              style: const TextStyle(color: AppColors.textHigh),
+                            ),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (val) => setState(() => _selectedType = val!),
                   ),
                 ),
@@ -174,12 +192,16 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             const SizedBox(height: 24),
 
             _InputSection(
-              label: _selectedType == 'To Bank Account' ? 'Bank Account Number' : 'Recipient Username',
+              label: _selectedType == 'To Bank Account'
+                  ? 'Bank Account Number'
+                  : 'Recipient Username',
               child: TextField(
                 controller: _destinationController,
                 style: const TextStyle(color: AppColors.textHigh),
                 decoration: InputDecoration(
-                  hintText: _selectedType == 'To Bank Account' ? 'Enter 10-digit number' : 'Enter @handle',
+                  hintText: _selectedType == 'To Bank Account'
+                      ? 'Enter 10-digit number'
+                      : 'Enter @handle',
                 ),
               ),
             ),
@@ -189,12 +211,21 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               label: 'Amount to Withdraw',
               child: TextField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textHigh),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textHigh,
+                ),
                 decoration: InputDecoration(
                   hintText: '0.00',
                   suffixText: _localCurrency,
-                  suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                  suffixStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                   errorText: _error,
                 ),
                 onChanged: (_) => setState(() => _error = null),
@@ -210,17 +241,23 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 children: [
                   _SummaryRow(
                     label: 'Processing Time',
-                    value: _selectedType == 'To Bank Account' ? '1-2 Business Days' : 'Instant',
+                    value: _selectedType == 'To Bank Account'
+                        ? '1-2 Business Days'
+                        : 'Instant',
                   ),
                   const SizedBox(height: 12),
-                  _SummaryRow(label: 'Network Fee', value: '1.50 $_localCurrency'),
+                  _SummaryRow(
+                    label: 'Network Fee',
+                    value: '1.50 $_localCurrency',
+                  ),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(color: AppColors.border, thickness: 0.5),
                   ),
                   _SummaryRow(
                     label: 'Amount to Receive',
-                    value: '${_localCurrency == 'USD' ? '\$' : ''}${(double.tryParse(_amountController.text) ?? 0).toStringAsFixed(2)} $_localCurrency',
+                    value:
+                        '${_localCurrency == 'USD' ? '\$' : ''}${(double.tryParse(_amountController.text) ?? 0).toStringAsFixed(2)} $_localCurrency',
                     isBold: true,
                   ),
                 ],
@@ -235,8 +272,15 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 backgroundColor: AppColors.error.withOpacity(0.8),
               ),
               child: _isLoading
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
-                : const Text('Confirm Withdrawal'),
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Confirm Withdrawal'),
             ),
           ],
         ),
@@ -296,7 +340,11 @@ class _SummaryRow extends StatelessWidget {
   final String value;
   final bool isBold;
 
-  const _SummaryRow({required this.label, required this.value, this.isBold = false});
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.isBold = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -316,4 +364,3 @@ class _SummaryRow extends StatelessWidget {
     );
   }
 }
-

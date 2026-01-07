@@ -2,18 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'rate_service.dart';
-import 'transaction_service.dart';
 
 class ConvertService {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
   final _rateService = RateService();
-  final _txService = TransactionService();
+
+  get note => null;
 
   /// Convert BTC → Local currency
-  Future<void> convertBtcToLocal({
-    required double btcAmount,
-  }) async {
+  Future<void> convertBtcToLocal({required double btcAmount}) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Not authenticated');
 
@@ -52,15 +50,14 @@ class ConvertService {
       transaction.update(userRef, {'wallet': wallet});
 
       // 🧾 Record transaction ATOMICALLY
-      await _txService.createTransaction(
-        senderId: user.uid,
-        receiverId: user.uid,
-        amountBtc: btcAmount,
-        localAmount: localAmount,
-        type: 'convert',
-        note: 'Converted BTC to $currency',
-        firestoreTransaction: transaction,
-      );
+      await _firestore.collection('transactions').add({
+        'type': 'converted',
+        'senderId': _auth.currentUser!.uid,
+        'amountBtc': btcAmount,
+        'amountLocal': localAmount,
+        'note': note ?? 'Converted assets',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 }
