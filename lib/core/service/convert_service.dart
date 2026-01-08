@@ -1,63 +1,56 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'rate_service.dart';
-
 class ConvertService {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
-  final _rateService = RateService();
 
-  get note => null;
-
-  /// Convert BTC → Local currency
-  Future<void> convertBtcToLocal({required double btcAmount}) async {
+  Future<void> convert({
+    required bool btcToLocal,
+    required double amount,
+    required double rate, // mock rate
+  }) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Not authenticated');
 
     final userRef = _firestore.collection('users').doc(user.uid);
 
-    await _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(userRef);
-      if (!snapshot.exists) throw Exception('User not found');
+    await _firestore.runTransaction((tx) async {
+      final snapshot = await tx.get(userRef);
+      if (!snapshot.exists) throw Exception('Wallet not found');
 
-      final data = snapshot.data()!;
-      final wallet = Map<String, dynamic>.from(data['wallet'] ?? {});
+      final wallet = snapshot['wallet'];
 
-      if (wallet.isEmpty) throw Exception('Wallet not initialized');
+      double btc = (wallet['btcBalance'] ?? 0).toDouble();
+      double local = (wallet['localBalance'] ?? 0).toDouble();
 
-      final currentBtc = (wallet['btcBalance'] ?? 0.0).toDouble();
-      final currentLocal = (wallet['localBalance'] ?? 0.0).toDouble();
-      final currency = wallet['currency'] as String? ?? 'USD';
+      if (btcToLocal) {
+        if (btc < amount) throw Exception('Insufficient BTC');
 
-      if (btcAmount <= 0) {
-        throw Exception('Invalid amount');
+        btc -= amount;
+        local += amount * rate;
+      } else {
+        if (local < amount) throw Exception('Insufficient local balance');
+
+        local -= amount;
+        btc += amount / rate;
       }
 
-      if (currentBtc < btcAmount) {
-        throw Exception('Insufficient BTC balance');
-      }
+      tx.update(userRef, {
+        'wallet.btcBalance': btc,
+        'wallet.localBalance': local,
+      });
 
-      final localAmount = _rateService.btcToLocal(
-        btcAmount: btcAmount,
-        currency: currency,
-      );
-
-      // 🔄 Update wallet atomically
-      wallet['btcBalance'] = currentBtc - btcAmount;
-      wallet['localBalance'] = currentLocal + localAmount;
-
-      transaction.update(userRef, {'wallet': wallet});
-
-      // 🧾 Record transaction ATOMICALLY
-      await _firestore.collection('transactions').add({
-        'type': 'converted',
-        'senderId': _auth.currentUser!.uid,
-        'amountBtc': btcAmount,
-        'amountLocal': localAmount,
-        'note': note ?? 'Converted assets',
+      tx.set(_firestore.collection('transactions').doc(), {
+        'type': 'convert',
+        'direction': btcToLocal ? 'BTC_TO_LOCAL' : 'LOCAL_TO_BTC',
+        'amount': amount,
+        'rate': rate,
+        'userId': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
       });
     });
   }
+
+  Future<void> convertBtcToLocal({required double btcAmount}) async {}
 }
