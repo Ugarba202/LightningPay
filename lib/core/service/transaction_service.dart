@@ -92,27 +92,34 @@ class TransactionService {
   // ============================================================
   Stream<QuerySnapshot<Map<String, dynamic>>> transactionsStream() {
     return _txRef
-        .where('senderId', isEqualTo: _uid)
+        .where(
+          Filter.or(
+            Filter('senderId', isEqualTo: _uid),
+            Filter('receiverId', isEqualTo: _uid),
+          ),
+        )
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
   Future<void> recordTransaction({
-  required String senderId,
-  required String receiverId,
-  required double amountBtc,
-  required double amountLocal,
-  required String type,
-  String? note,
-}) async {
-  await FirebaseFirestore.instance.collection('transactions').add({
-    'senderId': senderId,
-    'receiverId': receiverId,
-    'amountBtc': amountBtc,
-    'amountLocal': amountLocal,
-    'type': type, // deposit | withdraw | sent | received | convert
-    'note': note,
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-}
+    required String senderId,
+    required String receiverId,
+    required double amountBtc,
+    required double amountLocal,
+    required String type,
+    required String currency,
+    String? note,
+  }) async {
+    await FirebaseFirestore.instance.collection('transactions').add({
+      'senderId': senderId,
+      'receiverId': receiverId,
+      'amountBtc': amountBtc,
+      'amountLocal': amountLocal,
+      'type': type, // deposit | withdraw | sent | received | convert
+      'currency': currency,
+      'note': note,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
 
 }

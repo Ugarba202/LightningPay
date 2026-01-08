@@ -79,6 +79,18 @@ class UserService {
   }
 
   // ===============================
+  // UPDATE PROFILE IMAGE
+  // ===============================
+  Future<void> updateProfileImage(String imageUrl) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No authenticated user');
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'profileImageUrl': imageUrl,
+    });
+  }
+
+  // ===============================
   // MOCK BTC ADDRESS
   // ===============================
   String _generateMockBtcAddress() {

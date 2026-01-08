@@ -5,7 +5,7 @@ import '../logic/withdraw_logic.dart';
 import '../../convert/ui/convert_screen.dart';
 import '../../../../core/service/wallet_stream_service.dart';
 import '../../../../core/storage/auth_storage.dart';
-import '../../../../core/constant/contry_code.dart';
+
 
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
@@ -33,15 +33,10 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   Future<void> _loadUserCountry() async {
-    final countryName = await AuthStorage.getCountry();
-    if (countryName != null) {
-      final country = Country.getByName(countryName);
-      if (country != null) {
-        setState(() {
-          _localCurrency = country.currencyCode;
-        });
-      }
-    }
+    final currency = await AuthStorage.getCurrency();
+    setState(() {
+      _localCurrency = currency;
+    });
   }
 
   @override
@@ -72,6 +67,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         amount: _amountController.text,
         type: _selectedType,
         destination: _destinationController.text,
+        currency: _localCurrency,
       );
     } catch (e) {
       if (mounted) {

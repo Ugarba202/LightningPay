@@ -1,9 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:lighting_pay/features/auth/ui/login_screen.dart';
+
+import 'package:lighting_pay/features/onboarding/ui/onboarding_screen.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/themes/app_colors.dart';
 import '../../../core/storage/auth_storage.dart';
@@ -11,6 +12,8 @@ import '../../../core/themes/widgets/glass_card.dart';
 
 import '../../auth/ui/transaction_pin_flow.dart';
 import 'edit_profile_screen.dart';
+import '../../../core/service/profile_service.dart';
+import '../../../core/service/user_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -31,10 +34,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _username;
   String? recoveryPhrase;
 
-  // Profile image path
-  String? _profileImagePath;
+  // Profile image
+  String? _profileImagePath; // Local path
+  String? _profileImageUrl; // Cloud URL
+  bool _isUploading = false;
 
   final ImagePicker _picker = ImagePicker();
+  final ProfileService _profileService = ProfileService();
+  final UserService _userService = UserService();
 
   Future<void> _showImageSourceActionSheet() async {
     showModalBottomSheet(
@@ -88,17 +95,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       if (picked == null) return;
 
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName =
-          'profile_${DateTime.now().millisecondsSinceEpoch}${extension(picked.path)}';
-      final saved = await File(picked.path).copy('${appDir.path}/$fileName');
+      setState(() => _isUploading = true);
 
-      await AuthStorage.saveProfileImagePath(saved.path);
-      setState(() => _profileImagePath = saved.path);
+      // 1️⃣ Upload to Firebase Storage
+      final file = File(picked.path);
+      final downloadUrl = await _profileService.uploadProfileImage(file);
+
+      if (downloadUrl != null) {
+        // 2️⃣ Update Firestore
+        await _userService.updateProfileImage(downloadUrl);
+
+        // 3️⃣ Save locally for cache/offline
+        await AuthStorage.saveProfileImagePath(picked.path);
+
+        setState(() {
+          _profileImageUrl = downloadUrl;
+          _profileImagePath = picked.path;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile image updated successfully!'),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Upload failed');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to pick image')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -131,16 +166,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _removeProfileImage() async {
     try {
+      setState(() => _isUploading = true);
+
+      // 1️⃣ Delete from Storage
+      await _profileService.deleteProfileImage();
+
+      // 2️⃣ Reset in Firestore
+      await _userService.updateProfileImage('');
+
+      // 3️⃣ Clean up local
       if (_profileImagePath != null) {
         final file = File(_profileImagePath!);
         if (await file.exists()) await file.delete();
       }
       await AuthStorage.removeProfileImagePath();
-      setState(() => _profileImagePath = null);
+
+      setState(() {
+        _profileImagePath = null;
+        _profileImageUrl = null;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to remove image')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to remove image')));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -158,7 +210,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadSecurityState() async {
     final bio = await AuthStorage.isBiometricsEnabled();
     final tx = await AuthStorage.getSavedTransactionPin();
-    final imagePath = await AuthStorage.getProfileImagePath();
+    final localImagePath = await AuthStorage.getProfileImagePath();
+
+    // Fetch from Firestore for cloud sync
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    String? cloudImageUrl;
+    if (uid != null) {
+      final profile = await _userService.getUserProfile(uid);
+      cloudImageUrl = profile?['profileImageUrl'];
+    }
 
     // profile fields
     final name = await AuthStorage.getFullName();
@@ -177,7 +237,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _phone = phone;
       _username = username;
       recoveryPhrase = recovery;
-      _profileImagePath = imagePath;
+      _profileImagePath = localImagePath;
+      _profileImageUrl = cloudImageUrl;
     });
   }
 
@@ -223,9 +284,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (confirm == true) {
-      // For now, just navigate to login. In a real app you'd clear tokens.
+      // 1. Sign out from Firebase
+      await FirebaseAuth.instance.signOut();
+      
+      // 2. Clear local storage (removes registration status)
+      await AuthStorage.clear();
+
+      if (!mounted) return;
+
+      // 3. Navigate back to onboarding (user is now "new")
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
         (r) => false,
       );
     }
@@ -282,12 +351,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: CircleAvatar(
                               radius: 50,
                               backgroundColor: AppColors.surfaceDark,
-                              backgroundImage: _profileImagePath != null
-                                  ? FileImage(File(_profileImagePath!))
-                                  : null,
-                              child: _profileImagePath == null
-                                  ? const Icon(Icons.person_rounded, size: 54, color: AppColors.primary)
-                                  : null,
+                              backgroundImage:
+                                  _profileImageUrl != null &&
+                                      _profileImageUrl!.isNotEmpty
+                                  ? NetworkImage(_profileImageUrl!)
+                                  : (_profileImagePath != null
+                                            ? FileImage(
+                                                File(_profileImagePath!),
+                                              )
+                                            : null)
+                                        as ImageProvider?,
+                              child:
+                                  (_profileImageUrl == null ||
+                                          _profileImageUrl!.isEmpty) &&
+                                      _profileImagePath == null
+                                  ? (_isUploading
+                                        ? const CircularProgressIndicator(
+                                            color: AppColors.primary,
+                                          )
+                                        : const Icon(
+                                            Icons.person_rounded,
+                                            size: 54,
+                                            color: AppColors.primary,
+                                          ))
+                                  : (_isUploading
+                                        ? Container(
+                                            color: Colors.black45,
+                                            child:
+                                                const CircularProgressIndicator(
+                                                  color: AppColors.primary,
+                                                ),
+                                          )
+                                        : null),
                             ),
                           ),
                           Positioned(
@@ -301,7 +396,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: AppColors.primary,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                                child: const Icon(
+                                  Icons.camera_alt_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -319,7 +418,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _emailAddr ?? 'user@lightningpay.com',
-                        style: TextStyle(color: AppColors.textMed, fontSize: 14),
+                        style: TextStyle(
+                          color: AppColors.textMed,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
@@ -401,7 +503,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     label: 'Edit Profile Settings',
                     onTap: () async {
                       final updated = await Navigator.of(context).push<bool?>(
-                        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const EditProfileScreen(),
+                        ),
                       );
                       if (updated == true) await _loadSecurityState();
                     },
@@ -419,13 +523,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppColors.error.withOpacity(0.8),
                     onTap: _confirmLogout,
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   Center(
                     child: Text(
                       'LightningPay v1.2.0',
-                      style: TextStyle(color: AppColors.textLow, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: AppColors.textLow,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -503,7 +611,10 @@ class _ProfileItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(color: AppColors.textMed, fontSize: 13)),
+                  Text(
+                    label,
+                    style: TextStyle(color: AppColors.textMed, fontSize: 13),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     value,
@@ -517,7 +628,11 @@ class _ProfileItem extends StatelessWidget {
               ),
             ),
             if (showTrailing)
-              Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textLow),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppColors.textLow,
+              ),
           ],
         ),
       ),
@@ -541,7 +656,7 @@ class _ProfileActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveColor = color ?? AppColors.textHigh;
-    
+
     return GlassCard(
       padding: EdgeInsets.zero,
       color: Colors.white.withOpacity(0.02),
@@ -550,7 +665,11 @@ class _ProfileActionTile extends StatelessWidget {
         leading: Icon(icon, color: effectiveColor),
         title: Text(
           label,
-          style: TextStyle(color: effectiveColor, fontWeight: FontWeight.w600, fontSize: 15),
+          style: TextStyle(
+            color: effectiveColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
         ),
         trailing: Icon(Icons.chevron_right_rounded, color: AppColors.textLow),
       ),

@@ -33,9 +33,10 @@ class DepositLogic {
     await _txService.recordTransaction(
       type: 'deposit',
       amountLocal: value,
+      currency: currency,
       note: purpose.isNotEmpty ? purpose : 'Deposited funds',
-      senderId: '',
-      receiverId: '',
+      senderId: 'external',
+      receiverId: user.uid,
       amountBtc: 0.0,
     );
   }

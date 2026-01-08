@@ -27,10 +27,14 @@ class _VerifyEmailStepState extends State<VerifyEmailStep> {
       _error = null;
     });
 
-    final user = FirebaseAuth.instance.currentUser;
-    await user?.reload();
+    // 1️⃣ Reload the user state from Firebase servers
+    await FirebaseAuth.instance.currentUser?.reload();
 
-    if (user != null && user.emailVerified) {
+    // 2️⃣ IMPORTANT: Fetch the refreshed user instance
+    final refreshedUser = FirebaseAuth.instance.currentUser;
+
+    // 3️⃣ Check the updated verification status
+    if (refreshedUser != null && refreshedUser.emailVerified) {
       widget.onVerified();
     } else {
       setState(() {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../core/service/convert_service.dart';
 import '../../../core/service/rate_service.dart';
+import '../../../core/storage/auth_storage.dart';
 
 class ConvertScreen extends StatefulWidget {
   const ConvertScreen({super.key});
@@ -18,7 +19,18 @@ class _ConvertScreenState extends State<ConvertScreen> {
 
   double _localPreview = 0;
   bool _isLoading = false;
-  String _currency = 'NGN'; // will later come from user profile
+  String _currency = 'USD';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrency();
+  }
+
+  Future<void> _loadCurrency() async {
+    final cur = await AuthStorage.getCurrency();
+    setState(() => _currency = cur);
+  }
 
   void _updatePreview(String value) {
     final btc = double.tryParse(value);

@@ -32,13 +32,21 @@ class WithdrawService {
       });
 
       final txRef = userRef.collection('transactions').doc();
-      tx.set(txRef, {
+      final globalTxRef = _firestore.collection('transactions').doc();
+
+      final txData = {
         'type': 'withdraw',
+        'senderId': user.uid,
+        'receiverId': 'external',
         'amountLocal': amount,
         'amountBtc': null,
+        'currency': wallet['currency'],
         'note': note ?? 'Withdrawal',
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      tx.set(txRef, txData);
+      tx.set(globalTxRef, txData);
     });
   }
 }

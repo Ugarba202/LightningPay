@@ -4,7 +4,7 @@ import '../../../../core/themes/widgets/glass_card.dart';
 import '../logic/deposit_logic.dart';
 
 import '../../../../core/storage/auth_storage.dart';
-import '../../../../core/constant/contry_code.dart';
+
 
 class DepositScreen extends StatefulWidget {
   const DepositScreen({super.key});
@@ -40,16 +40,11 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   Future<void> _loadUserCountry() async {
-    final countryName = await AuthStorage.getCountry();
-    if (countryName != null) {
-      final country = Country.getByName(countryName);
-      if (country != null) {
-        setState(() {
-          _selectedCurrency = country.currencyCode;
-          _currencies = [_selectedCurrency];
-        });
-      }
-    }
+    final currency = await AuthStorage.getCurrency();
+    setState(() {
+      _selectedCurrency = currency;
+      _currencies = [currency];
+    });
   }
 
   @override

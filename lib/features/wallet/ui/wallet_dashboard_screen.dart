@@ -1,6 +1,7 @@
 // ignore_for_file: unused_local_variable
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:lighting_pay/features/send/ui/send_amount_screen.dart';
 
 import '../../../core/themes/app_colors.dart';
@@ -150,7 +151,7 @@ class WalletDashboardScreen extends StatelessWidget {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
+                                CupertinoPageRoute(
                                   builder: (_) =>
                                       const TransactionHistoryScreen(),
                                 ),

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/themes/app_colors.dart';
-import '../../onboarding/ui/onboarding_screen.dart';
-import '../../auth/ui/login_screen.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../auth/ui/login_screen.dart';
+import '../../onboarding/ui/onboarding_screen.dart';
+import '../../../core/themes/navigation/main_navigation_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,14 +42,24 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     Timer(const Duration(seconds: 6), () async {
+      final currentUser = FirebaseAuth.instance.currentUser;
       final registered = await AuthStorage.isRegistered();
+
       if (!mounted) return;
+
+      Widget nextScreen;
+      if (currentUser != null && registered) {
+        nextScreen = const MainNavigationScreen();
+      } else if (registered) {
+        nextScreen = const LoginScreen();
+      } else {
+        nextScreen = const OnboardingScreen();
+      }
 
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              registered ? const LoginScreen() : const OnboardingScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },

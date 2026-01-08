@@ -31,7 +31,9 @@ class WithdrawLogic {
 
   Future<void> processWithdraw({
     required String amount,
-    required String destination, required String type,
+    required String destination,
+    required String type,
+    required String currency,
   }) async {
     final value = double.tryParse(amount);
     if (value == null || value <= 0) {
@@ -50,7 +52,11 @@ class WithdrawLogic {
     await _txService.recordTransaction(
       type: 'withdraw',
       amountLocal: value,
-      note: 'Withdrawal to $destination', senderId: '', receiverId: '', amountBtc: 0.0,
+      currency: currency,
+      note: 'Withdrawal to $destination',
+      senderId: user.uid,
+      receiverId: 'external',
+      amountBtc: 0.0,
     );
   }
 }

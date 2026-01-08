@@ -28,13 +28,21 @@ class DepositService {
       });
 
       final txRef = userRef.collection('transactions').doc();
-      tx.set(txRef, {
+      final globalTxRef = _firestore.collection('transactions').doc();
+      
+      final txData = {
         'type': 'deposit',
+        'senderId': 'external',
+        'receiverId': user.uid,
         'amountLocal': amount,
         'amountBtc': null,
+        'currency': wallet['currency'],
         'note': note ?? 'Deposit',
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      tx.set(txRef, txData);
+      tx.set(globalTxRef, txData);
     });
   }
 }

@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../service/currency_mapper.dart';
 
 class AuthStorage {
   static const _kEmail = 'registered_email';
@@ -63,6 +64,12 @@ class AuthStorage {
   static Future<String?> getCountry() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_kCountry);
+  }
+
+  static Future<String> getCurrency() async {
+    final country = await getCountry();
+    if (country == null) return 'USD';
+    return CurrencyMapper.fromCountry(country);
   }
 
   static Future<void> savePhoneNumber(String phone) async {
