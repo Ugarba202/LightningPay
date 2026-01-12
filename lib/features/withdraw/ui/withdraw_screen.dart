@@ -45,7 +45,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     super.dispose();
   }
 
-  void _onWithdraw() {
+  Future<void> _onWithdraw() async {
     setState(() => _error = null);
 
     if (!_logic.validateAmount(_amountController.text)) {
@@ -53,9 +53,14 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       return;
     }
 
-    final balanceError = _logic.checkBalance(_amountController.text);
-    setState(() async => _error = await balanceError);
-    return;
+    final balanceError = await _logic.checkBalance(_amountController.text);
+    if (balanceError != null) {
+      setState(() => _error = balanceError);
+      return;
+    }
+
+    // If no error, proceed to actual withdrawal
+    executeWithdraw();
   }
 
   void executeWithdraw() async {
@@ -68,21 +73,25 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         destination: _destinationController.text,
         currency: _localCurrency,
       );
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Withdraw Successful! Balance Updated.')),
+      );
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString().replaceFirst('Exception: ', '');
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Withdraw Successful! Balance Updated.')),
-    );
   }
 
   @override
@@ -231,7 +240,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
             GlassCard(
               padding: const EdgeInsets.all(20),
-              color: AppColors.error.withOpacity(0.03),
+              color: Colors.white.withOpacity(0.03),
               child: Column(
                 children: [
                   _SummaryRow(
@@ -263,9 +272,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
             ElevatedButton(
               onPressed: _isLoading ? null : _onWithdraw,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error.withOpacity(0.8),
-              ),
               child: _isLoading
                   ? const SizedBox(
                       width: 24,
