@@ -259,17 +259,66 @@ class _QrScannerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Scan QR')),
-      body: MobileScanner(
-        onDetect: (capture) {
-          for (final barcode in capture.barcodes) {
-            final value = barcode.rawValue;
-            if (value != null && value.isNotEmpty) {
-              Navigator.pop(context, value);
-              break;
-            }
-          }
-        },
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Scan QR', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Center(
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.primary, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.2),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: MobileScanner(
+                  onDetect: (capture) {
+                    for (final barcode in capture.barcodes) {
+                      final value = barcode.rawValue;
+                      if (value != null && value.isNotEmpty) {
+                        Navigator.pop(context, value);
+                        break;
+                      }
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 80,
+            left: 0,
+            right: 0,
+            child: const Center(
+              child: Text(
+                'Align QR code within the frame',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

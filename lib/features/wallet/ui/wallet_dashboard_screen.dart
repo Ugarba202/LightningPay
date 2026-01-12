@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lighting_pay/features/send/ui/send_amount_screen.dart';
 
 import '../../../core/themes/app_colors.dart';
@@ -10,7 +12,6 @@ import '../../deposit/ui/deposit_screen.dart';
 import '../../transaction/ui/transaction_history_screen.dart';
 import '../../withdraw/ui/withdraw_screen.dart';
 import '../../convert/ui/convert_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/service/transaction_service.dart';
 import 'balance_card.dart';
 
@@ -19,6 +20,9 @@ class WalletDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final String currentUserId = user?.uid ?? '';
+
     return Scaffold(
       body: Stack(
         children: [
@@ -44,27 +48,112 @@ class WalletDashboardScreen extends StatelessWidget {
                   pinned: false,
                   backgroundColor: Colors.transparent,
                   elevation: 0,
-                  title: Text(
-                    'Wallet',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontSize: 22,
-                      letterSpacing: 0.5,
-                    ),
+                  toolbarHeight: 70, // Increased height for profile info
+                  title: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: currentUserId.isNotEmpty
+                        ? FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(currentUserId)
+                            .snapshots()
+                        : null,
+                    builder: (context, snapshot) {
+                      final data = snapshot.data?.data();
+                      final fullName = data?['fullName'] as String? ?? 'User';
+                      final firstName = fullName.split(' ').first;
+                      final profileImageUrl = data?['profileImageUrl'] as String?;
+
+                      return Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.5),
+                                width: 2,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.surfaceDark,
+                              backgroundImage: profileImageUrl != null &&
+                                      profileImageUrl.isNotEmpty
+                                  ? NetworkImage(profileImageUrl)
+                                  : null,
+                              child: (profileImageUrl == null ||
+                                      profileImageUrl.isEmpty)
+                                  ? Text(
+                                      firstName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Welcome, $firstName',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textHigh,
+                                ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   actions: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: IconButton(
-                        icon: const Icon(Icons.notifications_none_rounded),
-                        onPressed: () {},
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: IconButton(
-                        icon: const Icon(Icons.settings_outlined),
-                        onPressed: () {},
-                      ),
+                    // Notifications Icon with Red Dot
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: TransactionService().transactionsStream(),
+                      builder: (context, snapshot) {
+                        final hasDocs =
+                            snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.notifications_outlined,
+                                  size: 28,
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const TransactionHistoryScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (hasDocs)
+                                Positioned(
+                                  right: 10,
+                                  top: 10,
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Theme.of(context)
+                                            .scaffoldBackgroundColor,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -161,8 +250,9 @@ class WalletDashboardScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-
+                      
                       const SizedBox(height: 16),
+                      // StreamBuilder for Recent Transactions continues below...
 
                       // Recent Transactions
                       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(

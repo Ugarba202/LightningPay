@@ -8,26 +8,32 @@ class ProfileService {
 
   /// Uploads a profile image to Firebase Storage and returns the download URL.
   Future<String?> uploadProfileImage(File imageFile) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+
+    final uid = user.uid;
+    final ref = _storage.ref().child('profile_images').child('$uid.jpg');
+    final bytes = await imageFile.readAsBytes();
+
+    // 1. Upload Phase
     try {
-      final user = _auth.currentUser;
-      if (user == null) throw Exception('User not authenticated');
+      final task = ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      await task; // This throws providing the exact upload error
+    } catch (e) {
+      if (e.toString().contains('object-not-found')) {
+         // If write fails with object-not-found, the Bucket is likely missing or rules are blocking
+         throw Exception('Configuration Error: Storage Bucket not found or invalid.');
+      }
+      throw Exception('Upload failed: ${e.toString()}');
+    }
 
-      final uid = user.uid;
-      // Define the path: profile_images/{uid}.jpg
-      // We overwrite the same file to save space and keep it simple.
-      final ref = _storage.ref().child('profile_images').child('$uid.jpg');
-
-      // Upload the file
-      final _ = await ref.putFile(
-        imageFile,
-        SettableMetadata(contentType: 'image/jpeg'),
-      );
-
-      // Get and return the download URL
+    // 2. Retrieval Phase
+    try {
+      // Small delay to ensure consistency
+      await Future.delayed(const Duration(milliseconds: 1000));
       return await ref.getDownloadURL();
     } catch (e) {
-      print('ProfileService: Error uploading profile image: $e');
-      rethrow;
+      throw Exception('Failed to retrieve image URL: ${e.toString()}');
     }
   }
 

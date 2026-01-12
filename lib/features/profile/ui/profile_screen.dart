@@ -1,9 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import 'package:lighting_pay/features/onboarding/ui/onboarding_screen.dart';
-import 'package:image_picker/image_picker.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/themes/app_colors.dart';
@@ -34,167 +32,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _username;
   String? recoveryPhrase;
 
-  // Profile image
-  String? _profileImagePath; // Local path
-  String? _profileImageUrl; // Cloud URL
-  bool _isUploading = false;
-
-  final ImagePicker _picker = ImagePicker();
-  final ProfileService _profileService = ProfileService();
+  final ProfileService profileService = ProfileService();
   final UserService _userService = UserService();
-
-  Future<void> _showImageSourceActionSheet() async {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Take photo'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Choose from gallery'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-              if (_profileImagePath != null)
-                ListTile(
-                  leading: const Icon(Icons.delete, color: Colors.red),
-                  title: const Text(
-                    'Remove photo',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _confirmRemoveProfileImage();
-                  },
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final picked = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        imageQuality: 80,
-      );
-      if (picked == null) return;
-
-      setState(() => _isUploading = true);
-
-      // 1️⃣ Upload to Firebase Storage
-      final file = File(picked.path);
-      final downloadUrl = await _profileService.uploadProfileImage(file);
-
-      if (downloadUrl != null) {
-        // 2️⃣ Update Firestore
-        await _userService.updateProfileImage(downloadUrl);
-
-        // 3️⃣ Save locally for cache/offline
-        await AuthStorage.saveProfileImagePath(picked.path);
-
-        setState(() {
-          _profileImageUrl = downloadUrl;
-          _profileImagePath = picked.path;
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile image updated successfully!'),
-            ),
-          );
-        }
-      } else {
-        throw Exception('Upload failed');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update image: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isUploading = false);
-    }
-  }
-
-  Future<void> _confirmRemoveProfileImage() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Photo'),
-        content: const Text(
-          'Are you sure you want to remove your profile photo?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Remove'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await _removeProfileImage();
-    }
-  }
-
-  Future<void> _removeProfileImage() async {
-    try {
-      setState(() => _isUploading = true);
-
-      // 1️⃣ Delete from Storage
-      await _profileService.deleteProfileImage();
-
-      // 2️⃣ Reset in Firestore
-      await _userService.updateProfileImage('');
-
-      // 3️⃣ Clean up local
-      if (_profileImagePath != null) {
-        final file = File(_profileImagePath!);
-        if (await file.exists()) await file.delete();
-      }
-      await AuthStorage.removeProfileImagePath();
-
-      setState(() {
-        _profileImagePath = null;
-        _profileImageUrl = null;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to remove image')));
-      }
-    } finally {
-      if (mounted) setState(() => _isUploading = false);
-    }
-  }
 
   String extension(String path) {
     final idx = path.lastIndexOf('.');
@@ -210,14 +49,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadSecurityState() async {
     final bio = await AuthStorage.isBiometricsEnabled();
     final tx = await AuthStorage.getSavedTransactionPin();
-    final localImagePath = await AuthStorage.getProfileImagePath();
+    final _ = await AuthStorage.getProfileImagePath();
 
     // Fetch from Firestore for cloud sync
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    String? cloudImageUrl;
     if (uid != null) {
-      final profile = await _userService.getUserProfile(uid);
-      cloudImageUrl = profile?['profileImageUrl'];
+      await _userService.getUserProfile(uid);
     }
 
     // profile fields
@@ -237,8 +74,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _phone = phone;
       _username = username;
       recoveryPhrase = recovery;
-      _profileImagePath = localImagePath;
-      _profileImageUrl = cloudImageUrl;
+      _username = username;
+      recoveryPhrase = recovery;
     });
   }
 
@@ -286,7 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirm == true) {
       // 1. Sign out from Firebase
       await FirebaseAuth.instance.signOut();
-      
+
       // 2. Clear local storage (removes registration status)
       await AuthStorage.clear();
 
@@ -351,56 +188,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: CircleAvatar(
                               radius: 50,
                               backgroundColor: AppColors.surfaceDark,
-                              backgroundImage:
-                                  _profileImageUrl != null &&
-                                      _profileImageUrl!.isNotEmpty
-                                  ? NetworkImage(_profileImageUrl!)
-                                  : (_profileImagePath != null
-                                            ? FileImage(
-                                                File(_profileImagePath!),
-                                              )
-                                            : null)
-                                        as ImageProvider?,
-                              child:
-                                  (_profileImageUrl == null ||
-                                          _profileImageUrl!.isEmpty) &&
-                                      _profileImagePath == null
-                                  ? (_isUploading
-                                        ? const CircularProgressIndicator(
-                                            color: AppColors.primary,
-                                          )
-                                        : const Icon(
-                                            Icons.person_rounded,
-                                            size: 54,
-                                            color: AppColors.primary,
-                                          ))
-                                  : (_isUploading
-                                        ? Container(
-                                            color: Colors.black45,
-                                            child:
-                                                const CircularProgressIndicator(
-                                                  color: AppColors.primary,
-                                                ),
-                                          )
-                                        : null),
-                            ),
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: GestureDetector(
-                              onTap: _showImageSourceActionSheet,
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
+                              child: Icon(
+                                Icons.person_rounded,
+                                size: 54,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),

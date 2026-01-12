@@ -6,7 +6,6 @@ import '../../convert/ui/convert_screen.dart';
 import '../../../../core/service/wallet_stream_service.dart';
 import '../../../../core/storage/auth_storage.dart';
 
-
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
 
