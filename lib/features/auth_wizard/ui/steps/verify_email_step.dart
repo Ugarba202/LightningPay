@@ -105,7 +105,8 @@ class _VerifyEmailStepState extends State<VerifyEmailStep> {
           const SizedBox(height: 12),
           Text(
             'We’ve sent a verification link to your email address.\n'
-            'Please open your email and click the link to continue.',
+            'Please open your email and click the link to continue.\n\n'
+            'Can\'t find it? Check your spam or junk folder.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 32),
