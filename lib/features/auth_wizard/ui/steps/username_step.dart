@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
+import '../../../../core/service/user_service.dart';
 import '../../../../core/themes/app_colors.dart';
 
 class UsernameStep extends StatefulWidget {
@@ -19,25 +21,31 @@ class UsernameStep extends StatefulWidget {
 
 class _UsernameStepState extends State<UsernameStep> {
   final _controller = TextEditingController();
+  final _userService = UserService();
   String? _error;
+  bool _isChecking = false;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    // Add a listener to the controller to validate on each change.
-    _controller.addListener(() => _validateUsername(_controller.text));
+    _controller.addListener(_onTextChanged);
     widget.showValidationNotifier.addListener(_onShowValidationChanged);
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     widget.showValidationNotifier.removeListener(_onShowValidationChanged);
     _controller.dispose();
     super.dispose();
   }
 
+  void _onTextChanged() {
+    _validateUsername(_controller.text);
+  }
+
   void _onShowValidationChanged() {
-    // Re-run validation when parent requests showing errors
     if (widget.showValidationNotifier.value) {
       _validateUsername(_controller.text);
     } else if (_error != null) {
@@ -45,15 +53,14 @@ class _UsernameStepState extends State<UsernameStep> {
     }
   }
 
-  void _validateUsername(String value) {
+  Future<void> _validateUsername(String value) async {
     final trimmedValue = value.trim();
     final hasSpace = RegExp(r'\s').hasMatch(trimmedValue);
-    final isValid = trimmedValue.length >= 3 && !hasSpace;
+    final isBasicValid = trimmedValue.length >= 3 && !hasSpace;
 
-    if (isValid) {
-      if (_error != null) setState(() => _error = null);
-      widget.onValidationChanged(trimmedValue);
-    } else {
+    _debounceTimer?.cancel();
+
+    if (!isBasicValid) {
       widget.onValidationChanged('');
       if (widget.showValidationNotifier.value) {
         setState(() {
@@ -68,7 +75,28 @@ class _UsernameStepState extends State<UsernameStep> {
       } else if (_error != null) {
         setState(() => _error = null);
       }
+      return;
     }
+
+    // Basic validation passed, now check availability with debounce
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      setState(() => _isChecking = true);
+      
+      final isAvailable = await _userService.isUsernameAvailable(trimmedValue);
+      
+      if (!mounted) return;
+
+      setState(() {
+        _isChecking = false;
+        if (isAvailable) {
+          _error = null;
+          widget.onValidationChanged(trimmedValue);
+        } else {
+          _error = 'Username is already taken';
+          widget.onValidationChanged('');
+        }
+      });
+    });
   }
 
   @override
@@ -89,6 +117,16 @@ class _UsernameStepState extends State<UsernameStep> {
             decoration: InputDecoration(
               hintText: 'Username',
               errorText: _error,
+              suffixIcon: _isChecking
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : null,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 14,

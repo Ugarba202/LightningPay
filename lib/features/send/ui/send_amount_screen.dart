@@ -87,16 +87,37 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   // ----------------------------------
   // Scan QR and normalize username
   // ----------------------------------
+  String _normalizeUsername(String input) {
+    String clean = input.trim();
+    
+    // Remove prefixes like "lightningpay:" or "lightning:" or "btc:"
+    if (clean.contains(':')) {
+      clean = clean.split(':').last;
+    }
+    
+    // Remove any extra @ and spaces
+    clean = clean.replaceAll('@', '').trim();
+    
+    return clean.isEmpty ? '' : '@$clean';
+  }
+
   Future<void> _scanQr() async {
     final result = await Navigator.of(
       context,
     ).push<String>(MaterialPageRoute(builder: (_) => const _QrScannerScreen()));
 
     if (result != null && result.isNotEmpty) {
-      final normalized = result.startsWith('@') ? result : '@$result';
+      final normalized = _normalizeUsername(result);
 
-      _addressController.text = normalized;
-      await _resolveRecipient(normalized);
+      if (normalized.isNotEmpty) {
+        _addressController.text = normalized;
+        await _resolveRecipient(normalized);
+      } else {
+        setState(() {
+          _error = 'Invalid QR content';
+          _recipient = null;
+        });
+      }
     }
   }
 
@@ -152,6 +173,12 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
                         ),
                 ),
                 onChanged: (value) {
+                  // Clear previous recipient while typing
+                  setState(() {
+                    _recipient = null;
+                    _error = null;
+                  });
+
                   if (value.startsWith('@') && value.length > 2) {
                     _resolveRecipient(value);
                   }

@@ -11,6 +11,22 @@ class UserService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // ===============================
+  // CHECK USERNAME AVAILABILITY
+  // ===============================
+  Future<bool> isUsernameAvailable(String username) async {
+    final cleanUsername = username.replaceAll('@', '').trim().toLowerCase();
+    if (cleanUsername.isEmpty) return false;
+
+    final query = await _firestore
+        .collection('users')
+        .where('username', isEqualTo: cleanUsername)
+        .limit(1)
+        .get();
+
+    return query.docs.isEmpty;
+  }
+
+  // ===============================
   // CREATE USER PROFILE
   // ===============================
   Future<void> createUserProfile({

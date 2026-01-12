@@ -13,9 +13,10 @@ import 'steps/email_step.dart';
 import 'steps/verify_email_step.dart';
 import 'steps/country_step.dart';
 import 'steps/phone_step.dart';
-import 'steps/username_step.dart';
+
 import 'steps/pin_create_step.dart';
 import 'steps/pin_comfirm_step.dart';
+import 'steps/username_step.dart';
 
 import 'widget/step_progress_bar.dart';
 
@@ -59,44 +60,42 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
   }
 
   List<Widget> _getSteps() => [
-        NameStep(
-          showValidationNotifier: _showValidationNotifier,
-          onCompleted: (value) => _updateValidation(value, (val) => name = val),
-        ),
-        EmailStep(
-          showValidationNotifier: _showValidationNotifier,
-          onCompleted: (value) =>
-              _updateValidation(value, (val) => email = val),
-        ),
-        VerifyEmailStep(onVerified: _nextStep),
-        CountryStep(
-          showValidationNotifier: _showValidationNotifier,
-          onCompleted: (value) {
-            country = value;
-            setState(() => _isStepValid = value != null);
-          },
-        ),
-        PhoneStep(
-          country: country ?? supportedCountries.first,
-          initialValue: phone,
-          onCompleted: (value) =>
-              _updateValidation(value, (val) => phone = val),
-        ),
-        UsernameStep(
-          showValidationNotifier: _showValidationNotifier,
-          onValidationChanged: (value) =>
-              _updateValidation(value, (val) => username = val),
-        ),
-        PinCreateStep(onCompleted: _onPinCreated),
-        if (loginPin != null)
-          PinConfirmStep(
-            originalPin: loginPin!,
-            onCompleted: _onPinConfirmed,
-            dotColor: Colors.orange,
-          )
-        else
-          const SizedBox(),
-      ];
+    NameStep(
+      showValidationNotifier: _showValidationNotifier,
+      onCompleted: (value) => _updateValidation(value, (val) => name = val),
+    ),
+    EmailStep(
+      showValidationNotifier: _showValidationNotifier,
+      onCompleted: (value) => _updateValidation(value, (val) => email = val),
+    ),
+    VerifyEmailStep(onVerified: _nextStep),
+    CountryStep(
+      showValidationNotifier: _showValidationNotifier,
+      onCompleted: (value) {
+        country = value;
+        setState(() => _isStepValid = value != null);
+      },
+    ),
+    PhoneStep(
+      country: country ?? supportedCountries.first,
+      initialValue: phone,
+      onCompleted: (value) => _updateValidation(value, (val) => phone = val),
+    ),
+    UsernameStep(
+      showValidationNotifier: _showValidationNotifier,
+      onValidationChanged: (value) =>
+          _updateValidation(value, (val) => username = val),
+    ),
+    PinCreateStep(onCompleted: _onPinCreated),
+    if (loginPin != null)
+      PinConfirmStep(
+        originalPin: loginPin!,
+        onCompleted: _onPinConfirmed,
+        dotColor: Colors.orange,
+      )
+    else
+      const SizedBox(),
+  ];
 
   void _updateValidation(String value, Function(String?) onValid) {
     setState(() {
@@ -301,7 +300,7 @@ class _AuthWizardScreenState extends State<AuthWizardScreen> {
   Widget _overlayLoader(String text) {
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withOpacity(0.45),
+        color: Colors.black.withValues(alpha: 0.45),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
