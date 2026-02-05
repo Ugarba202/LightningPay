@@ -9,7 +9,7 @@ plugins {
 android {
     namespace = "com.example.lighting_pay"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = 26
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

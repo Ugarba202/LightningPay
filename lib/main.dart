@@ -1,14 +1,19 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+
 import 'package:lighting_pay/features/splash/ui/splashscreen.dart';
 import 'package:lighting_pay/firebase_options.dart';
 
+import 'core/service/breeze_service.dart';
 import 'core/themes/app_themes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  final breeze = BreezeService();
+  await breeze.init();
+
   runApp(const LightningPayApp());
 }
 
