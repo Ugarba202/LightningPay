@@ -22,11 +22,12 @@ class BalanceCard extends StatelessWidget {
         }
 
         final wallet = snapshot.data!;
-        final btc = wallet['btcBalance'] ?? 0.0;
-        final local = wallet['localBalance'] ?? 0.0;
+        final lightning = (wallet['lightningBalance'] ?? 0.0).toDouble();
+        final onchain = (wallet['onchainBalance'] ?? 0.0).toDouble();
+        final totalReal = (wallet['totalRealBalance'] ?? 0.0).toDouble();
+        final local = (wallet['localBalance'] ?? 0.0).toDouble();
         final currency = wallet['currency'] ?? '—';
 
-        final btcDisplay = btc % 1 == 0 ? btc.toInt().toString() : btc.toString();
         final localDisplay = local.toString().replaceAllMapped(
               RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
               (Match m) => '${m[1]},',
@@ -37,18 +38,24 @@ class BalanceCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Total Balance',
-                style: TextStyle(
-                  color: AppColors.textMed,
-                  fontSize: 14,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Real Balance',
+                    style: TextStyle(
+                      color: AppColors.textMed,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const Icon(Icons.bolt, color: Colors.amber, size: 16),
+                ],
               ),
               const SizedBox(height: 12),
 
-              /// BTC Balance
+              /// Total Real Balance
               Text(
-                '$btcDisplay BTC',
+                '${totalReal.toStringAsFixed(totalReal < 1 && totalReal > 0 ? 6 : 0)} sats',
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -56,15 +63,35 @@ class BalanceCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 6),
+              const SizedBox(height: 12),
+              
+              Row(
+                children: [
+                   _BalanceSmall(label: 'LN', value: '${lightning.toInt()}'),
+                   const SizedBox(width: 16),
+                   _BalanceSmall(label: 'On-chain', value: '${onchain.toInt()}'),
+                ],
+              ),
 
-              /// Local Currency Balance
-              Text(
-                '$localDisplay $currency',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textMed,
-                ),
+              const Divider(height: 32, color: Colors.white10),
+
+              /// Local Currency Balance (Simulated/Internal)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Local Account',
+                    style: TextStyle(fontSize: 14, color: AppColors.textMed),
+                  ),
+                  Text(
+                    '$localDisplay $currency',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -92,6 +119,24 @@ class BalanceCard extends StatelessWidget {
         message,
         style: const TextStyle(color: Colors.red),
       ),
+    );
+  }
+}
+
+class _BalanceSmall extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _BalanceSmall({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textMed)),
+        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textHigh)),
+      ],
     );
   }
 }

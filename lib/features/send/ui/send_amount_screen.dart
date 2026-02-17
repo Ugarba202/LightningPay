@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:breez_sdk/bridge_generated.dart';
+
 import '../../../core/themes/app_colors.dart';
 import '../../../core/service/user_lookup_service.dart';
+import '../../../core/service/breeze_service.dart';
 import '../../../core/models/user_model.dart';
 
 import 'comfirm_sheet.dart';
@@ -21,6 +24,7 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   final _lookupService = UserLookupService();
 
   AppUser? _recipient;
+  String? _bolt11;
   String? _error;
   bool _isResolving = false;
 
@@ -32,11 +36,12 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   }
 
   bool get canContinue {
+    if (_bolt11 != null) return true;
     final amount = double.tryParse(_amountController.text.trim());
     return _recipient != null && (amount != null && amount > 0);
   }
 
-  bool get isAmountEnabled => _recipient != null;
+  bool get isAmountEnabled => _recipient != null && _bolt11 == null;
 
   @override
   void dispose() {
@@ -47,15 +52,21 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
   }
 
   // ----------------------------------
-  // Resolve username to AppUser
+  // Resolve username or Bolt11
   // ----------------------------------
-  Future<void> _resolveRecipient(String input) async {
+  Future<void> _processInput(String input) async {
     final value = input.trim();
+
+    if (value.toLowerCase().startsWith('lnbc')) {
+      _processBolt11(value);
+      return;
+    }
 
     if (!value.startsWith('@')) {
       setState(() {
-        _error = 'Use a @username';
+        _error = 'Use a @username or Lightning Invoice';
         _recipient = null;
+        _bolt11 = null;
       });
       return;
     }
@@ -63,6 +74,7 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
     setState(() {
       _isResolving = true;
       _error = null;
+      _bolt11 = null;
     });
 
     final user = await _lookupService.findByUsername(value);
@@ -84,40 +96,42 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
     });
   }
 
-  // ----------------------------------
-  // Scan QR and normalize username
-  // ----------------------------------
-  String _normalizeUsername(String input) {
-    String clean = input.trim();
-    
-    // Remove prefixes like "lightningpay:" or "lightning:" or "btc:"
-    if (clean.contains(':')) {
-      clean = clean.split(':').last;
+  Future<void> _processBolt11(String bolt11) async {
+    setState(() {
+      _isResolving = true;
+      _error = null;
+      _recipient = null;
+    });
+
+    try {
+      final invoice = await BreezeService.instance.parseInvoice(bolt11);
+      if (!mounted) return;
+
+      setState(() {
+        _bolt11 = bolt11;
+        _amountController.text = (invoice.amountMsat ~/ 1000).toString();
+        _noteController.text = invoice.description ?? '';
+        _isResolving = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Invalid Lightning Invoice';
+        _isResolving = false;
+      });
     }
-    
-    // Remove any extra @ and spaces
-    clean = clean.replaceAll('@', '').trim();
-    
-    return clean.isEmpty ? '' : '@$clean';
   }
 
+  // ----------------------------------
+  // Scan QR and normalize input
+  // ----------------------------------
   Future<void> _scanQr() async {
     final result = await Navigator.of(
       context,
     ).push<String>(MaterialPageRoute(builder: (_) => const _QrScannerScreen()));
 
     if (result != null && result.isNotEmpty) {
-      final normalized = _normalizeUsername(result);
-
-      if (normalized.isNotEmpty) {
-        _addressController.text = normalized;
-        await _resolveRecipient(normalized);
-      } else {
-        setState(() {
-          _error = 'Invalid QR content';
-          _recipient = null;
-        });
-      }
+      _addressController.text = result;
+      await _processInput(result);
     }
   }
 
@@ -130,8 +144,9 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => SendConfirmSheet(
-        username: _recipient!.username,
-        address: null,
+        username: _recipient?.username,
+        bolt11: _bolt11,
+        address: _addressController.text.trim(),
         amount: _amountController.text.trim(),
         note: _noteController.text.trim().isEmpty
             ? null
@@ -157,7 +172,7 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
                 controller: _addressController,
                 style: const TextStyle(color: AppColors.textHigh),
                 decoration: InputDecoration(
-                  hintText: '@username',
+                  hintText: '@username or lnbc...',
                   errorText: _error,
                   suffixIcon: _isResolving
                       ? const Padding(
@@ -173,14 +188,16 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
                         ),
                 ),
                 onChanged: (value) {
-                  // Clear previous recipient while typing
+                  // Clear previous state while typing
                   setState(() {
                     _recipient = null;
+                    _bolt11 = null;
                     _error = null;
                   });
 
-                  if (value.startsWith('@') && value.length > 2) {
-                    _resolveRecipient(value);
+                  if ((value.startsWith('@') && value.length > 2) ||
+                      value.toLowerCase().startsWith('lnbc')) {
+                    _processInput(value);
                   }
                 },
               ),
@@ -200,10 +217,10 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
                   fontWeight: FontWeight.bold,
                   color: AppColors.textHigh,
                 ),
-                decoration: const InputDecoration(
-                  hintText: '0.00',
-                  suffixText: 'BTC',
-                  suffixStyle: TextStyle(
+                decoration: InputDecoration(
+                  hintText: '0',
+                  suffixText: _bolt11 != null ? 'sats' : 'BTC',
+                  suffixStyle: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
                   ),
@@ -216,6 +233,7 @@ class _SendAmountScreenState extends State<SendAmountScreen> {
               label: 'Description (optional)',
               child: TextField(
                 controller: _noteController,
+                enabled: _bolt11 == null,
                 maxLines: 2,
                 style: const TextStyle(color: AppColors.textHigh),
                 decoration: const InputDecoration(

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'breeze_service.dart';
 
 class WalletService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -18,17 +19,34 @@ class WalletService {
   }
 
   // ===============================
-  // 📡 REAL-TIME WALLET STREAM
+  // 📡 REAL-TIME WALLET STREAM (Combined Firestore + Breez)
   // ===============================
   Stream<Map<String, dynamic>> walletStream() {
-    return _userRef.snapshots().map((doc) {
+    return _userRef.snapshots().asyncMap((doc) async {
       final data = doc.data();
       if (data == null) throw Exception('User not found');
 
       final wallet = data['wallet'] as Map<String, dynamic>;
+      
+      // Fetch real balance from Breez SDK
+      double lightningBalance = 0;
+      double onchainBalance = 0;
+      try {
+        final nodeInfo = await BreezeService.instance.nodeInfo();
+        if (nodeInfo != null) {
+          lightningBalance = nodeInfo.channelsBalanceMsat / 1000;
+          onchainBalance = nodeInfo.onchainBalanceMsat / 1000;
+        }
+      } catch (e) {
+        // Fallback to 0 if node is not connected
+      }
+
       return {
         'btcBalance': (wallet['btcBalance'] ?? 0).toDouble(),
         'localBalance': (wallet['localBalance'] ?? 0).toDouble(),
+        'lightningBalance': lightningBalance,
+        'onchainBalance': onchainBalance,
+        'totalRealBalance': lightningBalance + onchainBalance,
         'currency': wallet['currency'],
         'address': wallet['address'],
         'accountNumber': data['accountNumber'],

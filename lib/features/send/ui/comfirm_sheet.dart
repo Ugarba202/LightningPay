@@ -5,6 +5,7 @@ import '../../../core/themes/app_colors.dart';
 import '../../../core/themes/widgets/glass_card.dart';
 import '../../../core/themes/widgets/transaction_pin_sheet.dart';
 import '../../../core/service/transaction_service.dart';
+import '../../../core/service/breeze_service.dart';
 
 import 'transaction_result_screen.dart';
 
@@ -12,12 +13,16 @@ class SendConfirmSheet extends StatefulWidget {
   final String? address;
   final String? username;
   final String? amount;
+  final String? bolt11;
+  final String? note;
 
   const SendConfirmSheet({
     super.key,
     this.address,
     this.username,
-    this.amount, String? note,
+    this.amount,
+    this.bolt11,
+    this.note,
   });
 
   @override
@@ -36,6 +41,8 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
 
   /// 🔎 Resolve Firestore userId from @username
   Future<String> _resolveReceiverUserId() async {
+    if (widget.bolt11 != null) return 'external_lightning';
+    
     if (widget.username == null || widget.username!.isEmpty) {
       throw Exception('Invalid recipient');
     }
@@ -63,20 +70,24 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
     setState(() => _isSending = true);
 
     try {
-      // ✅ SAFE amount parsing
-      final amountVal = double.tryParse(widget.amount ?? '');
-      if (amountVal == null || amountVal <= 0) {
-        throw Exception('Invalid amount');
+      if (widget.bolt11 != null) {
+        // ✅ REAL LIGHTNING PAYMENT
+        await BreezeService.instance.sendPayment(bolt11: widget.bolt11!);
+      } else {
+        // ✅ INTERNAL P2P PAYMENT (Legacy)
+        final amountVal = double.tryParse(widget.amount ?? '');
+        if (amountVal == null || amountVal <= 0) {
+          throw Exception('Invalid amount');
+        }
+
+        final receiverUserId = await _resolveReceiverUserId();
+        final txService = TransactionService();
+
+        await txService.sendBtc(
+          receiverUserId: receiverUserId,
+          amountBtc: amountVal,
+        );
       }
-
-      final receiverUserId = await _resolveReceiverUserId();
-
-      final txService = TransactionService();
-
-      await txService.sendBtc(
-        receiverUserId: receiverUserId,
-        amountBtc: amountVal,
-      );
 
       if (!mounted) return;
 
@@ -88,10 +99,10 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
         MaterialPageRoute(
           builder: (_) => TransactionResultScreen(
             success: true,
-            address: widget.address ?? 'Username',
+            address: widget.bolt11 != null ? 'Invoice' : (widget.address ?? 'Username'),
             username: widget.username,
-            amount: widget.amount ?? '0.00',
-            fee: '0.0001 BTC',
+            amount: widget.amount ?? '—',
+            fee: widget.bolt11 != null ? 'Dynamic' : '0.0001 BTC',
             txId: 'auto-generated',
           ),
         ),
@@ -108,7 +119,7 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
         MaterialPageRoute(
           builder: (_) => TransactionResultScreen(
             success: false,
-            address: widget.address ?? 'Unknown',
+            address: widget.bolt11 != null ? 'Invoice' : (widget.address ?? 'Unknown'),
             username: widget.username,
             amount: widget.amount ?? '0.00',
             fee: '—',
@@ -193,7 +204,7 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                 const SizedBox(height: 16),
                 Center(
                   child: Text(
-                    '${widget.amount} BTC',
+                    widget.bolt11 != null ? '${widget.amount} sats' : '${widget.amount} BTC',
                     style: const TextStyle(
                       color: AppColors.textHigh,
                       fontSize: 36,
@@ -209,14 +220,18 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                     children: [
                       _DetailRow(
                         label: 'Recipient',
-                        value: widget.username ?? '—',
+                        value: widget.bolt11 != null ? 'Lightning Invoice' : (widget.username ?? '—'),
                         isPrimary: true,
                       ),
                       const SizedBox(height: 16),
-                      const _DetailRow(
+                      _DetailRow(
                         label: 'Network Fee',
-                        value: '0.0001 BTC',
+                        value: widget.bolt11 != null ? 'Dynamic (LN)' : '0.0001 BTC',
                       ),
+                      if (widget.note != null) ...[
+                        const SizedBox(height: 16),
+                        _DetailRow(label: 'Note', value: widget.note!),
+                      ],
                     ],
                   ),
                 ),
@@ -228,7 +243,7 @@ class _SendConfirmSheetState extends State<SendConfirmSheet> {
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(
+                  child: const Text(
                     'Cancel Payment',
                     style: TextStyle(
                       color: AppColors.textLow,

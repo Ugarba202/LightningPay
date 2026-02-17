@@ -81,7 +81,10 @@ class TransactionResultScreen extends StatelessWidget {
                       isPrimary: success,
                     ),
                     const SizedBox(height: 16),
-                    _DetailRow(label: 'Amount Paid', value: '$amount BTC'),
+                    _DetailRow(
+                      label: 'Amount Paid', 
+                      value: amount.contains('sats') || amount.contains('BTC') ? amount : '$amount BTC',
+                    ),
                     const SizedBox(height: 16),
                     _DetailRow(label: 'Transaction ID', value: _shortTxId),
                   ],
